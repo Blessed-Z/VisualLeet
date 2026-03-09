@@ -1,0 +1,26 @@
+{
+  "version": "2.0",
+  "envId": "env-0gj9n1ly0bae52b9",
+  "$schema": "https://framework-1258016615.tcloudbaseapp.com/schema/latest.json",
+  "framework": {
+    "name": "leetcode-ai",
+    "plugins": {
+      "container": {
+        "use": "@cloudbase/framework-plugin-container",
+        "inputs": {
+          "serviceName": "leetcode-ai-app",
+          "servicePath": "/",
+          "localPath": "./",
+          "containerPort": 80,
+          "envVariables": {
+            "TCB_ENV_ID": "env-0gj9n1ly0bae52b9",
+            "AI_PROVIDER": "custom",
+            "AI_API_KEY": "sk-8347c9eae0534e4399219b78ee9cddbf",
+            "AI_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "AI_MODEL_NAME": "qwen-coder-plus"
+          }
+        }
+      }
+    }
+  }
+}

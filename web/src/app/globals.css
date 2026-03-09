@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+:root {
+  --background: #09090b; /* Zinc 950 */
+  --foreground: #fafafa; /* Zinc 50 */
+  
+  --card: #09090b;
+  --card-foreground: #fafafa;
+ 
+  --popover: #09090b;
+  --popover-foreground: #fafafa;
+ 
+  --primary: #7c3aed; /* Violet 600 */
+  --primary-foreground: #fafafa;
+ 
+  --secondary: #27272a; /* Zinc 800 */
+  --secondary-foreground: #fafafa;
+ 
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa; /* Zinc 400 */
+ 
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+ 
+  --destructive: #ef4444; /* Red 500 */
+  --destructive-foreground: #fafafa;
+ 
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #7c3aed;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  /* 复合背景：深色底 + 顶部紫色光晕 + 底部蓝色光晕 */
+  background-image: 
+    radial-gradient(circle at 50% -20%, rgba(120, 119, 198, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 120%, rgba(60, 50, 150, 0.1) 0%, transparent 40%),
+    linear-gradient(to bottom, #09090b, #000000);
+  min-height: 100vh;
+}
+
+/* 全局噪点纹理 (Noise Texture) */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Custom Scrollbar - 更细致 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-zinc-900/60 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+
+  .glass-button {
+    @apply bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all backdrop-blur-md active:scale-95;
+  }
+
+  /* 霓虹文字效果 */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-violet-200 via-fuchsia-200 to-white drop-shadow-[0_0_10px_rgba(139,92,246,0.3)];
+  }
+  
+  /* 细微的发光边框 */
+  .glow-border {
+    @apply relative after:absolute after:inset-0 after:rounded-[inherit] after:p-[1px] after:bg-gradient-to-r after:from-white/10 after:via-white/5 after:to-transparent after:-z-10 after:content-[''];
+  }
+}
