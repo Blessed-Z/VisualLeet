@@ -1,18 +1,16 @@
 # 使用轻量级的 Node.js 镜像
 FROM node:18-alpine AS base
 
-# 1. 安装依赖
-FROM base AS deps
+# 1. 安装系统依赖
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-# 这里的路径改为指向 web 子目录
+
+# 2. 拷贝依赖描述文件并安装 (利用 Docker 缓存)
+# 这里的 ./web/ 指的是相对于仓库根目录的路径
 COPY web/package.json web/package-lock.json ./
 RUN npm install --frozen-lockfile
 
-# 2. 构建项目
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# 3. 拷贝所有源代码并构建
 COPY web/ .
 
 # 设置构建时的环境变量
@@ -24,23 +22,9 @@ ENV AI_MODEL_NAME=qwen-coder-plus
 
 RUN npm run build
 
-# 3. 运行环境
-FROM base AS runner
-WORKDIR /app
-
+# 4. 运行阶段
 ENV NODE_ENV production
 ENV PORT 80
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-
-USER nextjs
-
 EXPOSE 80
 
 # 启动 Next.js
