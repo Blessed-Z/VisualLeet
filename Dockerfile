@@ -1,12 +1,11 @@
-# 使用 Node.js 18
-FROM node:18-alpine
+# 使用 Node.js 20 (Next.js 15+ 的最低要求)
+FROM node:20-alpine
 
 # 安装构建依赖
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # 1. 先拷贝 package.json
-# 注意：这里我们假设构建上下文是项目根目录
 COPY web/package.json web/package-lock.json ./
 
 # 2. 安装依赖
@@ -22,7 +21,7 @@ ENV AI_API_KEY=sk-8347c9eae0534e4399219b78ee9cddbf
 ENV AI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 ENV AI_MODEL_NAME=qwen-coder-plus
 
-# 5. 构建
+# 5. 构建 (Next.js 15+ 强制检查 Node 版本)
 RUN npm run build
 
 # 6. 运行
