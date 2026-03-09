@@ -2,12 +2,19 @@ const tcb = require('@cloudbase/node-sdk');
 
 /**
  * 初始化腾讯云 CloudBase
- * envId: 你的环境 ID
+ * 增加 SecretId 和 SecretKey 支持
  */
 const envId = process.env.TCB_ENV_ID || 'env-0gj9n1ly0bae52b9';
+const secretId = process.env.TENCENTCLOUD_SECRET_ID;
+const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
 
 const app = tcb.init({
-  env: envId
+  env: envId,
+  // 如果环境变量中有密钥，则优先使用
+  ...(secretId && secretKey ? {
+    secretId: secretId,
+    secretKey: secretKey
+  } : {})
 });
 
 const db = app.database();
@@ -15,7 +22,6 @@ const collectionName = 'analysis_cache';
 
 export async function getCachedAnalysis(hash: string, task: string) {
   try {
-    // CloudBase 数据库集合查询
     const res = await db.collection(collectionName).doc(hash).get();
     
     if (res.data && res.data.length > 0) {
@@ -34,8 +40,6 @@ export async function getCachedAnalysis(hash: string, task: string) {
 export async function saveAnalysisToCache(hash: string, task: string, content: string) {
   try {
     const col = db.collection(collectionName);
-    
-    // 使用 doc(hash).set 实现覆盖式写入 (Upsert)
     await col.doc(hash).set({
       task,
       content,
