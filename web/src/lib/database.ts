@@ -1,19 +1,15 @@
 const tcb = require('@cloudbase/node-sdk');
 
-/**
- * 初始化腾讯云 CloudBase
- * 增加 SecretId 和 SecretKey 支持
- */
-const envId = process.env.TCB_ENV_ID || 'env-0gj9n1ly0bae52b9';
-const secretId = process.env.TENCENTCLOUD_SECRET_ID;
-const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
+// 环境变量获取并去除空格 (防止从控制台拷贝时带入多余空格)
+const envId = (process.env.TCB_ENV_ID || 'env-0gj9n1ly0bae52b9').trim();
+const secretId = (process.env.TENCENTCLOUD_SECRET_ID || '').trim();
+const secretKey = (process.env.TENCENTCLOUD_SECRET_KEY || '').trim();
 
 const app = tcb.init({
   env: envId,
-  // 如果环境变量中有密钥，则优先使用
   ...(secretId && secretKey ? {
-    secretId: secretId,
-    secretKey: secretKey
+    secretId,
+    secretKey
   } : {})
 });
 
@@ -27,12 +23,14 @@ export async function getCachedAnalysis(hash: string, task: string) {
     if (res.data && res.data.length > 0) {
       const item = res.data[0];
       if (item.task === task) {
+        console.log(`[Cache Hit] Successfully loaded cached analysis for hash: ${hash}`);
         return item.content;
       }
     }
     return null;
-  } catch (e) {
-    console.warn('CloudBase Cache Query (Non-critical):', e);
+  } catch (e: any) {
+    // 权限或网络错误捕获
+    console.warn(`[Cache Query Warning] ${e.message}`);
     return null;
   }
 }
@@ -45,7 +43,12 @@ export async function saveAnalysisToCache(hash: string, task: string, content: s
       content,
       updated_at: db.serverDate()
     });
-  } catch (e) {
-    console.error('CloudBase Cache Save Error:', e);
+    console.log(`[Cache Saved] Hash: ${hash}`);
+  } catch (e: any) {
+    console.error(`[Cache Save Error] ${e.message}`);
+    // 如果报 Secret ID 错误，检查控制台环境变量是否正确
+    if (e.message.includes('secret id error')) {
+      console.error('CRITICAL: Please check TENCENTCLOUD_SECRET_ID/KEY in your TCB Environment Variables.');
+    }
   }
 }
