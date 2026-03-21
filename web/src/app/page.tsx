@@ -205,18 +205,23 @@ export default function Home() {
       });
       
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader found');
+      if (!reader) {
+        setMascotStatus('error');
+        return;
+      }
 
       let accumulatedContent = '';
       setMascotStatus('typing');
       
       let lastUpdateTime = 0;
-      const THROTTLE_MS = 150; // 分析任务频率稍低，150ms 即可
+      const THROTTLE_MS = 150; 
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        accumulatedContent += new TextDecoder().decode(value);
+        if (value) {
+          accumulatedContent += new TextDecoder().decode(value);
+        }
         
         const now = Date.now();
         if (now - lastUpdateTime > THROTTLE_MS) {
@@ -312,7 +317,10 @@ export default function Home() {
       });
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader');
+      if (!reader) {
+        setMascotStatus('error');
+        return;
+      }
 
       let aiResponseContent = '';
       const aiMsgId = Date.now();
@@ -324,7 +332,9 @@ export default function Home() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        aiResponseContent += new TextDecoder().decode(value);
+        if (value) {
+          aiResponseContent += new TextDecoder().decode(value);
+        }
         
         const now = Date.now();
         if (now - lastUpdateTime > THROTTLE_MS) {
