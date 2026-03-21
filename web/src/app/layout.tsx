@@ -6,8 +6,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "LeetCode AI Workspace",
-  description: "Advanced AI-powered algorithm visualization and learning platform.",
+  title: "VisualLeet - 算法不再是天书",
+  description: "基于 AI 的算法可视化与精品题解平台",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
