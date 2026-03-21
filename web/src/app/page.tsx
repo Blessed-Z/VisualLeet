@@ -210,6 +210,8 @@ export default function Home() {
         return;
       }
 
+      // Explicitly lock reader to a constant to satisfy TS compiler in the while loop
+      const activeReader = reader;
       let accumulatedContent = '';
       setMascotStatus('typing');
       
@@ -217,7 +219,7 @@ export default function Home() {
       const THROTTLE_MS = 150; 
 
       while (true) {
-        const { done, value } = await reader!.read();
+        const { done, value } = await activeReader.read();
         if (done) break;
         if (value) {
           accumulatedContent += new TextDecoder().decode(value);
@@ -322,6 +324,8 @@ export default function Home() {
         return;
       }
 
+      // Explicitly lock reader to a constant to satisfy TS compiler in the while loop
+      const activeReader = reader;
       let aiResponseContent = '';
       const aiMsgId = Date.now();
       setMascotStatus('typing');
@@ -330,7 +334,7 @@ export default function Home() {
       const THROTTLE_MS = 100; // 限制 100ms 更新一次 UI
 
       while (true) {
-        const { done, value } = await reader!.read();
+        const { done, value } = await activeReader.read();
         if (done) break;
         if (value) {
           aiResponseContent += new TextDecoder().decode(value);
@@ -388,7 +392,7 @@ export default function Home() {
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-white/5 rounded-lg text-zinc-500 transition-colors">{sidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}</button>
           <div className="flex items-center gap-3 cursor-pointer" onClick={handleResetToHome}>
             <div className="bg-gradient-to-br from-violet-600 to-fuchsia-600 p-2 rounded-lg"><Sparkles size={18} className="text-white" /></div>
-            <h1 className="text-lg font-bold text-white tracking-tight">LeetCode <span className="text-zinc-500 font-light">AI</span></h1>
+            <h1 className="text-lg font-bold text-white tracking-tight">VisualLeet <span className="text-zinc-500 font-light">.ai</span></h1>
           </div>
         </div>
         <div className="flex items-center gap-4">
