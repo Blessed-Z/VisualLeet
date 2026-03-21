@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { memo } from 'react';
 import Editor from '@monaco-editor/react';
 
 interface CodeEditorProps {
@@ -10,9 +10,9 @@ interface CodeEditorProps {
   placeholder?: string;
 }
 
-export function CodeEditor({ value, onChange, language = 'python', readOnly = false, placeholder = '' }: CodeEditorProps) {
+export const CodeEditor = memo(function CodeEditor({ value, onChange, language = 'python', readOnly = false, placeholder = '' }: CodeEditorProps) {
   return (
-    <div className="h-full w-full border border-gray-700 rounded-md overflow-hidden shadow-sm relative">
+    <div className="h-full w-full border border-zinc-800 rounded-md overflow-hidden shadow-sm relative bg-[#1e1e1e]">
       {placeholder && !value && (
         <div className="absolute top-4 left-12 z-10 pointer-events-none text-zinc-600 font-mono text-sm italic">
           {placeholder}
@@ -25,6 +25,7 @@ export function CodeEditor({ value, onChange, language = 'python', readOnly = fa
         value={value}
         onChange={onChange}
         theme="vs-dark"
+        loading={<div className="h-full w-full flex items-center justify-center text-zinc-700 text-xs animate-pulse font-mono">加载编辑器核心...</div>}
         options={{
           minimap: { enabled: false },
           fontSize: 14,
@@ -33,11 +34,13 @@ export function CodeEditor({ value, onChange, language = 'python', readOnly = fa
           padding: { top: 16, bottom: 16 },
           readOnly: readOnly,
           domReadOnly: readOnly,
+          quickSuggestions: !readOnly,
           contextmenu: !readOnly,
           lineNumbers: 'on',
           folding: true,
+          fontFamily: 'var(--font-mono)',
         }}
       />
     </div>
   );
-}
+});

@@ -1,9 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { CodeEditor } from '@/components/CodeEditor';
-import { Visualizer } from '@/components/Visualizer';
-import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import dynamic from 'next/dynamic';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+
+// 🚀 动态导入：只有在用到时才加载，极大提升首屏速度
+const CodeEditor = dynamic(() => import('@/components/CodeEditor').then(mod => mod.CodeEditor), { 
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-zinc-900/50 animate-pulse flex items-center justify-center text-zinc-700 text-xs">载入编辑器...</div>
+});
+
+const Visualizer = dynamic(() => import('@/components/Visualizer').then(mod => mod.Visualizer), { ssr: false });
+const MarkdownRenderer = dynamic(() => import('@/components/MarkdownRenderer').then(mod => mod.MarkdownRenderer), { ssr: false });
+const ProblemLibrary = dynamic(() => import('@/components/ProblemLibrary').then(mod => mod.ProblemLibrary), { ssr: false });
+const Dashboard = dynamic(() => import('@/components/Dashboard').then(mod => mod.Dashboard), { ssr: false });
+
 import { CypherMascot, MascotStatus } from '@/components/CypherMascot';
 import { 
   Play, BookOpen, Wrench, Loader2, Code2, 
@@ -14,8 +24,6 @@ import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
 import { getHistory, saveHistory, toggleFavorite, deleteHistoryItem } from '@/lib/storage';
 import { HistoryItem, TaskResult, AnalysisState, TaskType, ChatMessage } from '@/types';
-import { ProblemLibrary } from '@/components/ProblemLibrary';
-import { Dashboard } from '@/components/Dashboard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const initialTaskState: TaskResult = { content: '', isLoading: false };
@@ -452,20 +460,28 @@ export default function Home() {
                      <div className="flex gap-2">
                        {activeTab === 'input' && <button onClick={handleStartAnalysis} className="px-4 py-1.5 bg-violet-600 text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-2"><Send size={12} /> 开始分析</button>}
                        {activeTab === 'fix' && results.fix.content && <button onClick={() => { let c = results.fix.content; const m = c.match(/```(?:\w+)?\n([\s\S]*?)\n```/); setUserCode(m ? m[1] : c); setActiveTab('input'); }} className="px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg">应用并修改</button>}
-                       {(activeTab !== 'input' && activeTab !== 'chat') && (results[activeTab as keyof Omit<AnalysisState, 'chat'>] as TaskResult)?.content && <button onClick={handleToggleFavorite} className={clsx("px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 transition-all active:scale-95", isFavorite ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-zinc-800 text-zinc-400 border-white/5")}><Star size={12} fill={isFavorite ? "currentColor" : "none"} /> {isFavorite ? "已收藏" : "收藏笔记"}</button>}
+                       {activeTab !== 'input' && activeTab !== 'chat' && (results[activeTab] as TaskResult)?.content && <button onClick={handleToggleFavorite} className={clsx("px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 transition-all active:scale-95", isFavorite ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-zinc-800 text-zinc-400 border-white/5")}><Star size={12} fill={isFavorite ? "currentColor" : "none"} /> {isFavorite ? "已收藏" : "收藏笔记"}</button>}
                      </div>
                   </div>
                   <div className="flex-1 bg-zinc-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
                      {activeTab === 'input' ? (
                        <div className="flex flex-col h-full p-8 gap-6 overflow-y-auto custom-scrollbar">
                          <div className="h-[20%] flex flex-col gap-3 min-h-[120px]"><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">题目描述 / URL</label><textarea className="w-full h-full bg-zinc-950/50 border border-white/5 rounded-2xl p-6 text-sm text-zinc-300 outline-none resize-none focus:ring-1 focus:ring-violet-500/30" placeholder="粘贴题目内容..." value={problemDescription} onChange={(e) => setProblemDescription(e.target.value)} /></div>
-                         <div className="h-[80%] flex flex-col gap-3 min-h-[400px]"><div className="flex items-center justify-between"><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">代码实现</label><select value={language} onChange={(e) => setLanguage(e.target.value)} className="bg-zinc-900 border border-white/10 text-[10px] text-zinc-400 rounded px-2 py-1"><option value="python">Python</option><option value="javascript">JavaScript</option><option value="java">Java</option></select></div><div className="flex-1 border border-white/5 rounded-2xl overflow-hidden"><CodeEditor value={userCode} onChange={(val) => setUserCode(val || '')} language={language} readOnly={Object.values(results).some(r => r.isLoading)} placeholder="# 在此粘贴你的代码实现..." /></div></div>
+                         <div className="h-[80%] flex flex-col gap-3 min-h-[400px]"><div className="flex items-center justify-between"><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">代码实现</label><select value={language} onChange={(e) => setLanguage(e.target.value)} className="bg-zinc-900 border border-white/10 text-[10px] text-zinc-400 rounded px-2 py-1"><option value="python">Python</option><option value="javascript">JavaScript</option><option value="java">Java</option></select></div><div className="flex-1 border border-white/5 rounded-2xl overflow-hidden"><CodeEditor value={userCode} onChange={(val) => setUserCode(val || '')} language={language} readOnly={Object.values(results).some(r => 'isLoading' in r && r.isLoading)} placeholder="# 在此粘贴你的代码实现..." /></div></div>
                        </div>
 
-                     ) : (activeTab !== 'input' && activeTab !== 'chat' && results[activeTab as keyof Omit<AnalysisState, 'chat'>].isLoading && !(results[activeTab as keyof Omit<AnalysisState, 'chat'>] as TaskResult).content) ? (
+                     ) : (activeTab !== 'chat' && (results[activeTab] as TaskResult).isLoading && !(results[activeTab] as TaskResult).content) ? (
                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-6"><div className="w-12 h-12 rounded-full border-2 border-zinc-800 border-t-violet-500 animate-spin" /><p className="text-sm text-zinc-500">赛芙正在思考...</p></div>
                      ) : (
-                       <div className="h-full w-full overflow-hidden flex flex-col">{activeTab === 'visualize' && <Visualizer htmlContent={results.visualize.content} />}{activeTab === 'fix' && <CodeEditor value={results.fix.content} onChange={() => {}} language={language} readOnly={true} />}{(activeTab === 'explain' || activeTab === 'tips' || activeTab === 'fundamentals') && <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-zinc-950/20"><MarkdownRenderer content={(results[activeTab as keyof Omit<AnalysisState, 'chat'>] as TaskResult).content} /></div>}</div>
+                       <div className="h-full w-full overflow-hidden flex flex-col">
+                         {activeTab === 'visualize' && <Visualizer htmlContent={results.visualize.content} />}
+                         {activeTab === 'fix' && <CodeEditor value={results.fix.content} onChange={() => {}} language={language} readOnly={true} />}
+                         {(activeTab === 'explain' || activeTab === 'tips' || activeTab === 'fundamentals') && (
+                           <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-zinc-950/20">
+                             <MarkdownRenderer content={(results[activeTab] as TaskResult).content} />
+                           </div>
+                         )}
+                       </div>
                      )}
                   </div>
                 </div>

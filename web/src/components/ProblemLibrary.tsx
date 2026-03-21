@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { Book, Hash, Star, Search, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -17,7 +17,7 @@ interface ProblemLibraryProps {
   selectedSlug?: string;
 }
 
-export function ProblemLibrary({ onSelect, selectedSlug }: ProblemLibraryProps) {
+export const ProblemLibrary = memo(function ProblemLibrary({ onSelect, selectedSlug }: ProblemLibraryProps) {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
@@ -29,14 +29,14 @@ export function ProblemLibrary({ onSelect, selectedSlug }: ProblemLibraryProps) 
       .catch(err => console.error("Failed to load registry:", err));
   }, []);
 
-  const categories = ['All', ...Array.from(new Set(problems.map(p => p.category)))];
+  const categories = useMemo(() => ['All', ...Array.from(new Set(problems.map(p => p.category)))], [problems]);
 
-  const filteredProblems = problems.filter(p => {
+  const filteredProblems = useMemo(() => problems.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase()) || 
                          p.slug.toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'All' || p.category === filter;
     return matchesSearch && matchesFilter;
-  });
+  }), [problems, search, filter]);
 
   return (
     <div className="flex flex-col h-full bg-zinc-950 border-r border-white/5 w-72 shrink-0">
