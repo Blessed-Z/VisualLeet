@@ -1,4 +1,4 @@
-export type TaskType = 'fix' | 'explain' | 'visualize' | 'tips' | 'complexity' | 'chat';
+export type TaskType = 'fix' | 'explain' | 'visualize' | 'tips' | 'complexity' | 'chat' | 'fundamentals';
 
 export interface AnalyzeRequest {
   task: TaskType;
@@ -17,6 +17,7 @@ export interface AnalyzeResponse {
     visualizationHtml?: string;
     tips?: string;
     complexity?: string;
+    fundamentals?: string;
     chatReply?: string;
   };
   error?: string;
@@ -41,6 +42,7 @@ export interface AnalysisState {
   visualize: TaskResult;
   tips: TaskResult;
   complexity: TaskResult;
+  fundamentals: TaskResult;
   chat: {
     messages: ChatMessage[];
     isLoading: boolean;
@@ -61,6 +63,7 @@ export interface HistoryItem {
     visualize?: string;
     tips?: string;
     complexity?: string;
+    fundamentals?: string;
     chat?: ChatMessage[];
   };
 }

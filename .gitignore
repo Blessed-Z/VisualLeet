@@ -1,0 +1,13 @@
+# Data (locally generated content)
+data/
+
+# Project Management
+PROGRESS.md
+REQUIREMENTS.md
+
+# OS files
+.DS_Store
+
+# Local Env
+.env*
+!.env.example

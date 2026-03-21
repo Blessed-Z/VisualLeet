@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "mkdir -p public/data/hot100 && cp -r ../data/hot100/* public/data/hot100/ && next dev",
+    "build": "mkdir -p public/data/hot100 && cp -r ../data/hot100/* public/data/hot100/ && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -12,7 +12,6 @@
     "@cloudbase/node-sdk": "^3.18.0",
     "@google/generative-ai": "^0.24.1",
     "@monaco-editor/react": "^4.7.0",
-    "@supabase/supabase-js": "^2.98.0",
     "@types/uuid": "^10.0.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.0",

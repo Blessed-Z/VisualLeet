@@ -13,9 +13,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '请至少提供题目描述或代码中的一项' }, { status: 400 });
     }
 
-    // 1. 生成唯一 Hash，作为缓存 Key
-    // 我们综合考虑题目、代码和语言
-    const inputString = `${problemDescription}-${userCode}-${language}-${userMessage || ''}`;
+    // 1. 智能生成缓存 Key
+    let cacheKeyBase = '';
+    
+    // 尝试从描述中提取 LeetCode 题目 Slug (例如 'two-sum')
+    const slugMatch = problemDescription.match(/problems\/([\w-]+)/);
+    if (slugMatch && slugMatch[1]) {
+      cacheKeyBase = `slug:${slugMatch[1]}`;
+    } else {
+      // 如果没有 URL，则对描述进行去空格处理后做 Hash
+      cacheKeyBase = `desc:${problemDescription.trim().replace(/\s+/g, ' ')}`;
+    }
+
+    // 对于 'fix' 任务，代码内容很重要；对于 'explain' 任务，题目内容更重要
+    // 我们根据任务类型决定 Hash 的组成部分
+    let inputString = '';
+    if (task === 'explain' || task === 'tips' || task === 'complexity') {
+      // 只要题目一样，讲解和复杂度通常通用
+      inputString = `${cacheKeyBase}-${language}`;
+    } else {
+      // 代码修正和可视化需要考虑代码的变化
+      inputString = `${cacheKeyBase}-${userCode.trim()}-${language}`;
+    }
+
     const hash = createHash('md5').update(inputString).digest('hex');
 
     // 2. 尝试从后端缓存获取
@@ -29,26 +49,76 @@ export async function POST(req: Request) {
 
     // 3. 构建 Prompt
     const commonInstruction = `
-      You are an expert coding assistant. 
+      You are an expert coding assistant for KIDS. 
       You will directly provide the requested content without any introductory or concluding remarks.
       Do NOT wrap the response in markdown code blocks if not requested.
       IMPORTANT: All explanations, comments, and UI text MUST be in Chinese (Simplified).
+
+      Persona: 
+      - Target audience is a CHILD (小朋友). Use simple analogies, friendly tone, and clear metaphors.
+      - Imagine you are explaining to a 10-year-old.
+
+      Style Guide: 
+      - Use Emojis to make content engaging (e.g., 💡 for insights, 🛠️ for steps, 📈 for complexity).
+      - For Python code, ALWAYS include detailed Chinese comments using '#' explaining the logic in a fun way.
+      - Use standard Markdown (bold, lists, code blocks) for better readability.
     `;
 
     let prompt = '';
-    
+
     if (task === 'fix') {
-      prompt = `${commonInstruction}\nTask: Fix the code for the given problem.\nProblem: ${problemDescription}\nLanguage: ${language}\nCode:\n${userCode}\n\nResponse format: Give me ONLY the complete fixed code followed by a brief Chinese explanation as a comment at the bottom.`;
+      prompt = `${commonInstruction}\nTask: Fix the code for the given problem.\nProblem: ${problemDescription}\nLanguage: ${language}\nCode:\n${userCode}\n\nResponse format: Give me ONLY the complete fixed code with friendly Chinese '#' comments, followed by a '🌟 小朋友也能听懂的修改建议' at the bottom.`;
     } else if (task === 'explain') {
-      prompt = `${commonInstruction}\nTask: Explain the code logic step-by-step in Markdown (Chinese).\nProblem: ${problemDescription}\nCode:\n${userCode}`;
+      prompt = `${commonInstruction}\nTask: Provide a Deep Insight and step-by-step logic explanation for a CHILD.
+      Structure:
+      # [Problem Title]
+      ## 💡 深度解析 (像讲故事一样说明核心策略)
+      ## 🛠️ 执行步骤 (每步都要有生动的比喻)
+      ## 📈 复杂度分析 (用小朋友能听懂的方式说明快慢)
+
+      Problem: ${problemDescription}\nCode:\n${userCode}`;
     } else if (task === 'visualize') {
-      prompt = `${commonInstruction}\nTask: Generate a standalone HTML5 file with CSS and JavaScript to visualize this algorithm.\nBe self-contained, use <style> and <script>. All UI text must be in Chinese. Include Step, Auto, Reset controls.\nProblem: ${problemDescription}\nCode:\n${userCode}`;
-    } else if (task === 'tips') {
-      prompt = `${commonInstruction}\nTask: Provide a Smart Tip or mnemonic in Chinese.\nProblem: ${problemDescription}\nCode:\n${userCode}`;
+      prompt = `${commonInstruction}\nTask: Generate a standalone HTML5 file with CSS and JavaScript to visualize this algorithm for a CHILD.
+      Requirements:
+      - Dark mode UI (bg: #09090b, text: #fff).
+      - EXAMPLE DATA: DO NOT use trivial examples (e.g., arrays shorter than 6 elements). Use a robust, representative example that showcases edge cases or interesting patterns (e.g., duplicates, negatives, or larger values).
+      - MANDATORY: Include a 'Status Message' (状态说明) div that explains exactly what is happening in simple Chinese during each step.
+      - MANDATORY: Visually represent the internal data structures (e.g., if using a Hash Map, draw a table/grid labeled '记忆口袋' or '哈希表' that updates dynamically).
+      - Include Step (下一步), Auto (自动播放), Reset (重置) controls.
+      - Make it colorful and use smooth CSS transitions.
+      Problem: ${problemDescription}\nCode:\n${userCode}`;
+    }
+ else if (task === 'tips') {
+      prompt = `${commonInstruction}\nTask: Provide a Smart Tip or mnemonic in Chinese for a CHILD.
+      Structure:
+      # 💡 思路巧记
+      ## 🔑 核心口诀 (像儿歌或顺口溜一样)
+      ## 🌟 关键点 (1-2个最重要的知识点)
+
+      Problem: ${problemDescription}\nCode:\n${userCode}`;
+    } else if (task === 'fundamentals') {
+      prompt = `${commonInstruction}\nTask: Provide Foundational Knowledge and a Variable Dictionary for a CHILD.
+      Structure:
+      # 📖 基础百科: [Relevant Data Structure/Algorithm Name]
+      ## 💡 核心概念 (Use a simple analogy like a magic bag, a train, etc.)
+      ## 📋 变量小字典 (Explain what each variable in the code represents, e.g., 'ans' is the answer box, 'dic' is the memory pocket)
+      ## 📈 为什么学这个? (Explain the practical benefit in a fun way)
+
+      Problem: ${problemDescription}\nCode:\n${userCode}`;
     } else if (task === 'complexity') {
-      prompt = `${commonInstruction}\nTask: Analyze Time and Space Complexity in Chinese.\nProblem: ${problemDescription}\nCode:\n${userCode}`;
+
+      prompt = `${commonInstruction}\nTask: Analyze Time and Space Complexity in Chinese using '📈 复杂度分析' as header.
+      Problem: ${problemDescription}\nCode:\n${userCode}`;
     } else if (task === 'chat') {
-      prompt = `${commonInstruction}\nTask: Chat with the user about their code/problem. Be helpful and encouraging.\nProblem: ${problemDescription}\nCode: ${userCode}\nQuestion: ${userMessage}`;
+      const historyText = body.chatHistory 
+        ? body.chatHistory.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n')
+        : '';
+      prompt = `${commonInstruction}\nTask: You are '助手' (Assistant). Help the user with their coding questions. Be encouraging.
+      Problem: ${problemDescription}\nCode: ${userCode}\n
+      --- Conversation History ---
+      ${historyText}
+      --- Current Question ---
+      User: ${userMessage}`;
     }
 
     // 4. 调用 AI 流式生成

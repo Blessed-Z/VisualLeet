@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: leetcode-ai-workspace:latest
+    container_name: leetcode-ai-app
+    ports:
+      - "3000:80"
+    env_file:
+      - web/.env.local  # 自动加载你本地的密钥文件
+    environment:
+      - NODE_ENV=production
+      # 这里可以覆盖 env_file 中的变量
+      - PORT=80
+    restart: always
+
+networks:
+  default:
+    name: leetcode-network
