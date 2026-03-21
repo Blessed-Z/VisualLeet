@@ -2,18 +2,35 @@
 
 [![Vercel](https://vercel.com/button)](https://visual-leet.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Stars](https://img.shields.io/github/stars/Blessed-Z/VisualLeet.svg)](https://github.com/Blessed-Z/VisualLeet/stargazers)
 
-**VisualLeet** 是一款将 LeetCode 刷题体验带入 2.0 时代的 AI 辅助工具。它不仅仅是一个解题器，更是你的算法“私人教练”。通过 **可视化动画**、**小朋友视角比喻**、**儿歌顺口溜巧记**，让复杂的算法逻辑变得像看动画片一样简单有趣。
+**VisualLeet** 是一款将 LeetCode 刷题体验带入 2.0 时代的 AI 辅助工具。通过 **可视化动画**、**小朋友视角比喻**、**儿歌顺口溜巧记**，让复杂的算法逻辑变得像看动画片一样简单有趣。
 
 ---
 
-## ✨ 为什么选择 VisualLeet?
+## 📸 界面预览
 
-*   **🎬 独家可视化生成**: AI 会为每一道题生成专属的动态演示网页，你可以亲自点击“下一步”，看数据结构如何流转。
-*   **🧒 小朋友模式解析**: 厌倦了冷冰冰的技术文档？我们用最通俗的比喻（如“魔法口袋”、“蝴蝶翅膀”、“舞伴匹配”）来解释每一个核心步骤。
-*   **🎵 押韵巧记口诀**: 每道题都配有朗朗上口的儿歌口诀，帮你把算法套路刻在脑子里。
-*   **🤖 赛芙 (Cypher) 伴读**: 原创 AI 看板娘赛芙全程陪同，通过丰富的表情反馈你的分析状态。
-*   **📂 Hot 100 全量收录**: 离线预置了 LeetCode Hot 100 的全套精品解析与动画，无需 API Key 即可查看。
+### 🏠 沉浸式主界面
+在这里开启你的算法之旅，选择 Hot 100 题目或输入新题。
+<p align="center">
+  <img src="web/public/187557909f0df9a74030b52593b8cdef.png" alt="VisualLeet Main Dashboard" width="850px" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);" />
+</p>
+
+### 🎬 动态算法演示
+点击“下一步”，亲眼见证数据结构的流转，配合通俗易懂的“小朋友版”笔记。
+<p align="center">
+  <img src="web/public/64f19f012ca68cdc137955ab79d86fa9.png" alt="VisualLeet Problem Visualization" width="850px" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);" />
+</p>
+
+---
+
+## ✨ 核心卖点
+
+*   🎬 **独家可视化生成**: AI 为每一道题生成专属的动态演示，支持断点式单步调试。
+*   🧒 **小朋友模式解析**: 拒绝冷冰冰的技术术语，用“魔法口袋”、“舞伴匹配”等比喻拆解算法。
+*   🎵 **押韵巧记口诀**: 每道题都配有朗朗上口的儿歌顺口溜，帮你把套路刻在脑子里。
+*   🤖 **AI团子伴读**: 原创 AI 团子全程陪同，通过丰富的表情提供情绪价值。
+*   📱 **全平台适配**: 完美支持手机端，随时随地利用碎片时间温习算法。
 
 ---
 
@@ -29,25 +46,12 @@ npm install
 ```
 
 ### 2. 配置你的“魔法钥匙”
-在 `web` 目录下创建 `.env.local` 文件，填入你常用的 AI 密钥：
-
-```env
-# Google Gemini (推荐，目前速度极快且有免费档)
-AI_PROVIDER=google
-AI_API_KEY=AIzaSy...你的密钥...
-AI_MODEL_NAME=gemini-3.1-flash
-
-# 或者使用 DeepSeek (性价比之王)
-# AI_PROVIDER=deepseek
-# AI_API_KEY=sk-xxxxxxxx
-# AI_MODEL_NAME=deepseek-chat
-```
+在 `web` 目录下创建 `.env.local` 文件，参考 `.env.example` 填入你的密钥（支持 Gemini, DeepSeek, OpenAI 等）。
 
 ### 3. 开启旅程
 ```bash
 npm run dev
 ```
-访问 [http://localhost:3000](http://localhost:3000)，把 LeetCode 链接丢给赛芙吧！
 
 ---
 
@@ -59,32 +63,28 @@ npm run dev
 │   ├── src/
 │   │   ├── app/          # 路由与主页面
 │   │   ├── components/   # UI 组件 (看板娘、编辑器、仪表盘等)
-│   │   ├── lib/          # 工具函数
-│   │   └── types/        # TypeScript 类型定义
-│   ├── public/           # 静态资源
-│   │   └── data/         # 同步后的 Hot 100 离线数据
-│   └── .env.example      # AI 密钥配置模板
+│   ├── public/           # 静态资源 (含 Hot 100 离线数据)
 ├── sop.md                # 标准作业程序 (如何贡献新题解)
 └── README.md             # 项目说明文档
 ```
 
 ---
 
-## 🛠️ 技术栈
+## 🤝 贡献与共建
 
-*   **Core**: [Next.js 15](https://nextjs.org/) (App Router)
-*   **Styling**: Tailwind CSS + Framer Motion (动画核心)
-*   **Editor**: Monaco Editor (VS Code 同款体验)
-*   **AI**: OpenAI SDK & Google Generative AI
-*   **Icons**: Lucide React
+本项目欢迎任何形式的贡献！如果你想参与开发或补充题解：
+
+1.  **Fork** 本仓库。
+2.  **创建特性分支** (`git checkout -b feature/AmazingFeature`)。
+3.  **提交更改** (`git commit -m 'Add some AmazingFeature'`)。
+4.  **推送分支** (`git push origin feature/AmazingFeature`)。
+5.  **开启一个 Pull Request**。
 
 ---
 
-## 🤝 贡献与共建
+## 📈 Star History
 
-本项目致力于构建一个“有温度”的算法百科。
-*   如果你有更好的比喻或顺口溜，欢迎提交 PR。
-*   如果发现了 Bug，请通过 [Issue](https://github.com/Blessed-Z/VisualLeet/issues) 告知我们。
+[![Star History Chart](https://api.star-history.com/svg?repos=Blessed-Z/VisualLeet&type=Date)](https://star-history.com/#Blessed-Z/VisualLeet&Date)
 
 ---
 
