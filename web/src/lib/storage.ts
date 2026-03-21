@@ -2,7 +2,7 @@ import { HistoryItem } from '@/types';
 
 const STORAGE_KEY = 'leetcode_visualizer_history';
 
-export const saveHistory = (item: Omit<HistoryItem, 'timestamp'>): HistoryItem => {
+export const saveHistory = (item: Omit<HistoryItem, 'timestamp'>): HistoryItem[] => {
   const history = getHistory();
   const newItem = { ...item, timestamp: Date.now() };
   
@@ -22,7 +22,7 @@ export const saveHistory = (item: Omit<HistoryItem, 'timestamp'>): HistoryItem =
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-  return newItem;
+  return history;
 };
 
 export const getHistory = (): HistoryItem[] => {
