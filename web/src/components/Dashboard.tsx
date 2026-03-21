@@ -62,15 +62,15 @@ function DashboardComponent({ onAction }: DashboardProps) {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-bold uppercase tracking-widest mb-4">
             <Zap size={12} /> Powered by Cypher AI
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4 tracking-tight">
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-4 tracking-tight">
             欢迎回来，<span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">准备好开始刷题了吗？</span>
           </h1>
-          <p className="text-zinc-500 text-sm max-w-lg mx-auto leading-relaxed">
+          <p className="text-zinc-500 text-sm max-w-lg mx-auto leading-relaxed px-4">
             选择左侧 Hot 100 经典题目，或通过下方卡片开启一次全新的 AI 算法探索之旅。
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
           {cards.map((card, idx) => (
             <motion.button
               key={card.id}
@@ -97,7 +97,7 @@ function DashboardComponent({ onAction }: DashboardProps) {
           ))}
         </div>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-white/5 pt-12">
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-8 border-t border-white/5 pt-12 px-4">
           <div className="flex items-start gap-4">
             <div className="p-3 rounded-2xl bg-zinc-900 border border-white/5">
               <BookMarked className="text-zinc-500" size={20} />
