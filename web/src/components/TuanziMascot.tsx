@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export type MascotStatus = 'idle' | 'thinking' | 'typing' | 'success' | 'error';
 
-interface CypherMascotProps {
+interface TuanziMascotProps {
   status: MascotStatus;
 }
 
 // 使用 memo 包装，只有状态变化时才重新渲染
-export const CypherMascot = memo(({ status }: CypherMascotProps) => {
+export const TuanziMascot = memo(({ status }: TuanziMascotProps) => {
   const current = useMemo(() => {
     const colors = {
       idle: { primary: '#9d4edd', secondary: '#c8b6ff', glow: '#9d4edd' },
@@ -133,4 +133,4 @@ export const CypherMascot = memo(({ status }: CypherMascotProps) => {
   );
 });
 
-CypherMascot.displayName = 'CypherMascot';
+TuanziMascot.displayName = 'TuanziMascot';

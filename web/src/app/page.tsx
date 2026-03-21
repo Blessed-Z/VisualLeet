@@ -14,7 +14,7 @@ const MarkdownRenderer = dynamic(() => import('@/components/MarkdownRenderer'), 
 const ProblemLibrary = dynamic(() => import('@/components/ProblemLibrary'), { ssr: false });
 const Dashboard = dynamic(() => import('@/components/Dashboard'), { ssr: false });
 
-import { CypherMascot, MascotStatus } from '@/components/CypherMascot';
+import { TuanziMascot, MascotStatus } from '@/components/TuanziMascot';
 import { 
   Play, BookOpen, Wrench, Loader2, 
   Lightbulb, Star, History, Trash2, X, Send, Square,
@@ -407,7 +407,7 @@ export default function Home() {
                 
                 <div className="hidden lg:flex mt-auto pt-6 flex-col items-center gap-4">
                   <button onClick={() => setAssistantOpen(!assistantOpen)} className={clsx("p-3 rounded-2xl border transition-all", assistantOpen ? "bg-violet-600/20 border-violet-500/30 text-violet-400" : "bg-zinc-900 border-white/5 text-zinc-500 hover:text-zinc-300")}><MessageSquare size={20} /></button>
-                  <CypherMascot status={mascotStatus} />
+                  <TuanziMascot status={mascotStatus} />
                 </div>
               </div>
 
@@ -428,7 +428,7 @@ export default function Home() {
                          <div className="flex-[2] flex flex-col gap-2 min-h-[250px]"><div className="flex items-center justify-between"><label className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">代码实现</label><select value={language} onChange={(e) => setLanguage(e.target.value)} className="bg-zinc-900 border border-white/10 text-[10px] text-zinc-400 rounded px-2 py-1"><option value="python">Python</option><option value="javascript">JavaScript</option></select></div><div className="flex-1 border border-white/5 rounded-xl overflow-hidden"><CodeEditor value={userCode} onChange={(val) => setUserCode(val || '')} language={language} readOnly={Object.values(results).some(r => 'isLoading' in r && r.isLoading)} /></div></div>
                        </div>
                      ) : (activeTab !== 'chat' && (results[activeTab] as TaskResult).isLoading && !(results[activeTab] as TaskResult).content) ? (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4"><div className="w-10 h-10 rounded-full border-2 border-zinc-800 border-t-violet-500 animate-spin" /><p className="text-xs text-zinc-500">赛芙分析中...</p></div>
+                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4"><div className="w-10 h-10 rounded-full border-2 border-zinc-800 border-t-violet-500 animate-spin" /><p className="text-xs text-zinc-500">团子分析中...</p></div>
                      ) : (
                        <div className="h-full w-full overflow-hidden flex flex-col">
                          {activeTab === 'visualize' && <Visualizer htmlContent={results.visualize.content} />}

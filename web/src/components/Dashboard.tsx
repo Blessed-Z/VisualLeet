@@ -13,7 +13,7 @@ function DashboardComponent({ onAction }: DashboardProps) {
     {
       id: 'analyze',
       title: '分析新题目',
-      desc: '粘贴 LeetCode 链接或题目描述，让赛芙为你生成可视化动画与深度解析。',
+      desc: '粘贴 LeetCode 链接或题目描述，让团子为你生成可视化动画与深度解析。',
       icon: <Sparkles className="text-violet-400" size={24} />,
       bg: 'from-violet-500/10 to-fuchsia-500/5',
       border: 'border-violet-500/20',
@@ -60,7 +60,7 @@ function DashboardComponent({ onAction }: DashboardProps) {
             </a>
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-bold uppercase tracking-widest mb-4">
-            <Zap size={12} /> Powered by Cypher AI
+            <Zap size={12} /> Powered by Tuanzi AI
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-4 tracking-tight">
             欢迎回来，<span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">准备好开始刷题了吗？</span>
