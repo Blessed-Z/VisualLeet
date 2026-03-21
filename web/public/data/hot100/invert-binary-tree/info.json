@@ -1,0 +1,18 @@
+{
+  "id": 226,
+  "title": "翻转二叉树",
+  "slug": "invert-binary-tree",
+  "difficulty": "Easy",
+  "category": "二叉树",
+  "tags": ["Tree", "Depth-First Search", "Binary Tree"],
+  "description": "翻转一棵二叉树。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "递归翻转",
+      "time": "O(n)",
+      "space": "O(n)"
+    }
+  ]
+}

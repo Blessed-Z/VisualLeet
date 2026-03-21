@@ -1,0 +1,18 @@
+{
+  "id": 70,
+  "title": "70. 爬楼梯",
+  "difficulty": "Easy",
+  "description": "假设你正在爬楼梯。需要 n 阶你才能到达楼顶。每次你可以爬 1 或 2 个台阶。你有多少种不同的方法可以爬到楼顶呢？",
+  "category": "动态规划",
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(n)"
+  },
+  "solutions": [
+    {
+      "id": "dp",
+      "name": "动态规划法",
+      "description": "到达第 n 阶的方法数等于到达第 n-1 阶和第 n-2 阶的方法数之和。"
+    }
+  ]
+}

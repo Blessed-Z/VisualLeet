@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>994. 腐烂的橘子 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--amber); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative; border: 1px solid #30363d; border-radius: 20px;
+            background: #1c2128; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; overflow: hidden;
+            min-height: 400px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .cell {
+            width: 50px; height: 50px; border-radius: 50%; /* Make them look like oranges */
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background-color: #0d1117; border: 2px solid #30363d;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        /* 0: empty, 1: fresh, 2: rotten */
+        .cell.empty { border-color: transparent; background: transparent; box-shadow: none; }
+        .cell.fresh { background-color: var(--emerald-green); border-color: #049673; color: white; }
+        .cell.rotten { background-color: var(--rose-red); border-color: #b0004c; color: white; transform: scale(1.1); box-shadow: 0 0 15px var(--rose-red); }
+        .cell.new-rotten { background-color: var(--amber); border-color: #b38500; transform: scale(1.2); z-index: 10; animation: pulse 1s infinite alternate; }
+
+        @keyframes pulse {
+            from { box-shadow: 0 0 10px var(--amber); }
+            to { box-shadow: 0 0 25px var(--amber); }
+        }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .time-badge { position: absolute; top: 20px; left: 20px; font-size: 1.2em; font-weight: bold; color: var(--amber); background: rgba(255, 190, 11, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--amber); }
+        .highlight-text { font-weight: bold; padding: 0 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍊 腐烂的橘子</h1>
+        <div class="status-box">
+            <div id="status">初始状态：清点果篮里的僵尸橘子和新鲜橘子。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始时间流逝。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="time-badge">经过时间: <span id="time-display">0</span> 分钟</div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+            <div class="grid" id="grid-container"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const initialGrid = [
+            [2, 1, 1],
+            [1, 1, 0],
+            [0, 1, 1]
+        ];
+        
+        let grid = [];
+        let rows = initialGrid.length;
+        let cols = initialGrid[0].length;
+        
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function cloneGrid(g) { return g.map(row => [...row]); }
+
+        function generateSteps() {
+            grid = cloneGrid(initialGrid);
+            steps = [];
+            let time = 0;
+
+            let rotten = [];
+            let freshCount = 0;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (grid[r][c] === 2) rotten.push([r, c]);
+                    else if (grid[r][c] === 1) freshCount++;
+                }
+            }
+
+            steps.push({ type: 'INIT', grid: cloneGrid(grid), time, freshCount, newRotten: [] });
+
+            const dirs = [[0,1], [1,0], [0,-1], [-1,0]];
+
+            while (freshCount > 0 && rotten.length > 0) {
+                let nextRotten = [];
+                for (let [r, c] of rotten) {
+                    for (let [dr, dc] of dirs) {
+                        let nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] === 1) {
+                            grid[nr][nc] = 2;
+                            freshCount--;
+                            nextRotten.push([nr, nc]);
+                        }
+                    }
+                }
+                
+                time++;
+                steps.push({ type: 'SPREAD', grid: cloneGrid(grid), time, freshCount, newRotten: nextRotten });
+                rotten = nextRotten;
+            }
+
+            if (freshCount > 0) {
+                steps.push({ type: 'IMPOSSIBLE', grid: cloneGrid(grid), time, freshCount, newRotten: [] });
+            } else {
+                steps.push({ type: 'DONE', grid: cloneGrid(grid), time, freshCount, newRotten: [] });
+            }
+        }
+
+        function render() {
+            const container = document.getElementById('grid-container');
+            container.style.gridTemplateColumns = `repeat(${cols}, 50px)`;
+            container.style.transform = `scale(${zoomFactor})`;
+            container.innerHTML = '';
+
+            const step = steps[currentStep];
+            if (!step) return;
+
+            // To quickly check if a cell is a "new" rotten in this step
+            const isNewRotten = (r, c) => step.newRotten.some(([nr, nc]) => nr === r && nc === c);
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const div = document.createElement('div');
+                    let val = step.grid[r][c];
+                    let cls = 'cell';
+                    let emoji = '';
+                    
+                    if (val === 1) {
+                        cls += ' fresh'; emoji = '🍊';
+                    } else if (val === 2) {
+                        if (isNewRotten(r, c)) {
+                            cls += ' new-rotten'; emoji = '🧟';
+                        } else {
+                            cls += ' rotten'; emoji = '🦠';
+                        }
+                    } else {
+                        cls += ' empty';
+                    }
+
+                    div.className = cls;
+                    div.innerText = emoji;
+                    container.appendChild(div);
+                }
+            }
+
+            document.getElementById('time-display').innerText = step.time;
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'INIT') {
+                status.innerHTML = `初始状态：<span class="emerald highlight-text">${step.freshCount}</span> 个新鲜橘子，准备面临感染。`;
+                subStatus.innerText = `点击下一步，时间开始流逝...`;
+            } else if (step.type === 'SPREAD') {
+                status.innerHTML = `⏳ 第 <span class="amber highlight-text">${step.time}</span> 分钟：僵尸橘子向四周咬去！`;
+                if (step.newRotten.length > 0) {
+                    subStatus.innerHTML = `新增了 <span class="rose highlight-text">${step.newRotten.length}</span> 个僵尸橘子。还剩 ${step.freshCount} 个新鲜橘子。`;
+                } else {
+                    subStatus.innerText = `没有橘子被感染。`;
+                }
+            } else if (step.type === 'IMPOSSIBLE') {
+                status.innerHTML = `❌ <b>无法全部感染！</b>`;
+                subStatus.innerHTML = `剩下的 <span class="emerald highlight-text">${step.freshCount}</span> 个新鲜橘子处于安全死角。返回 -1。`;
+                document.getElementById('next-btn').disabled = true;
+            } else if (step.type === 'DONE') {
+                status.innerHTML = `🏁 <b>全军覆没！</b>`;
+                subStatus.innerHTML = `一共花费了 <span class="amber highlight-text">${step.time}</span> 分钟，所有橘子都变成了僵尸。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; zoomFactor = Math.max(0.4, Math.min(3, zoomFactor)); render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; init(); }
+
+        function init() {
+            generateSteps();
+            render();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

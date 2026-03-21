@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>105. 从前序与中序遍历序列构造二叉树 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+
+        .container {
+            width: 95%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-bottom: 60px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border-left: 5px solid var(--primary-purple);
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            line-height: 1.4;
+        }
+
+        .visualization-area {
+            position: relative;
+            height: 350px;
+            border: 1px solid #30363d;
+            border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+        }
+
+        .array-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--node-bg);
+            border-radius: 12px;
+            border: 1px solid #30363d;
+        }
+
+        .array-row { display: flex; align-items: center; gap: 10px; }
+        .array-label { width: 70px; font-size: 0.75em; color: #8b949e; font-weight: bold; }
+        .array-items { display: flex; gap: 4px; }
+        .item {
+            width: 30px; height: 30px; border: 1px solid #30363d; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; font-size: 0.85em;
+            transition: all 0.3s;
+        }
+
+        .item.active { border-color: var(--amber); background: rgba(255, 190, 11, 0.1); transform: translateY(-5px); }
+        .item.root { border-color: var(--rose-red); background: rgba(255, 0, 110, 0.1); }
+        .item.left { border-color: var(--primary-purple); background: rgba(157, 78, 221, 0.1); }
+        .item.right { border-color: var(--emerald-green); background: rgba(6, 214, 160, 0.1); }
+
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.5s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+        .node.new circle { stroke: var(--rose-red); fill: rgba(255, 0, 110, 0.1); }
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.5s; }
+
+        .zoom-controls {
+            position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100;
+        }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ 构造二叉树</h1>
+        <div class="status-box">
+            <div id="status">准备开始构造！前序遍历找根，中序遍历分左右。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步观察切分过程。</div>
+        </div>
+
+        <div class="array-view">
+            <div class="array-row">
+                <div class="array-label">PREORDER</div>
+                <div id="pre-items" class="array-items"></div>
+            </div>
+            <div class="array-row">
+                <div class="array-label">INORDER</div>
+                <div id="in-items" class="array-items"></div>
+            </div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+            <svg id="tree-svg"></svg>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const preorder = [3, 9, 20, 15, 7];
+        const inorder = [9, 3, 15, 20, 7];
+        
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function buildSteps(pre, ino, parentId = null, side = null) {
+            if (pre.length === 0) return null;
+            
+            const rootVal = pre[0];
+            const rootIdx = ino.indexOf(rootVal);
+            
+            const leftIno = ino.slice(0, rootIdx);
+            const rightIno = ino.slice(rootIdx + 1);
+            
+            const leftPre = pre.slice(1, leftIno.length + 1);
+            const rightPre = pre.slice(leftIno.length + 1);
+            
+            const node = { val: rootVal, id: Math.random().toString(36).substr(2, 9), parentId, side };
+            steps.push({ node, pre, ino, leftPre, leftIno, rightPre, rightIno });
+            
+            node.left = buildSteps(leftPre, leftIno, node.id, 'left');
+            node.right = buildSteps(rightPre, rightIno, node.id, 'right');
+            return node;
+        }
+
+        function init() {
+            steps = [];
+            currentStep = 0;
+            buildSteps(preorder, inorder);
+            renderArrays();
+            renderTree();
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "准备开始构造！";
+            document.getElementById('sub-status').innerText = "点击下一步观察切分过程。";
+        }
+
+        function renderArrays() {
+            const preContainer = document.getElementById('pre-items');
+            const inContainer = document.getElementById('in-items');
+            preContainer.innerHTML = '';
+            inContainer.innerHTML = '';
+            
+            preorder.forEach((v, i) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.id = `pre-${v}`;
+                div.innerText = v;
+                preContainer.appendChild(div);
+            });
+            
+            inorder.forEach((v, i) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.id = `in-${v}`;
+                div.innerText = v;
+                inContainer.appendChild(div);
+            });
+        }
+
+        const svg = document.getElementById('tree-svg');
+        let displayedNodes = [];
+
+        function renderTree() {
+            svg.innerHTML = '';
+            if (displayedNodes.length === 0) return;
+
+            // 1. First, determine positions using ONLY nodes that should be visible
+            // However, to keep positions stable, we should ideally compute the full layout once
+            const coords = new Map();
+            const displayedIds = new Set(displayedNodes.map(n => n.id));
+
+            function layout(node, x, y, dx) {
+                if (!node) return;
+                coords.set(node.id, { x, y });
+                // ONLY traverse if the child is in displayedNodes
+                if (node.left && displayedIds.has(node.left.id)) layout(node.left, x - dx, y + 60, dx / 2);
+                if (node.right && displayedIds.has(node.right.id)) layout(node.right, x + dx, y + 60, dx / 2);
+            }
+
+            const root = displayedNodes.find(n => !n.parentId);
+            if (root) layout(root, 0, 0, 150);
+
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            
+            // 2. Draw links (only if both ends are displayed)
+            displayedNodes.forEach(node => {
+                if (node.parentId && displayedIds.has(node.parentId)) {
+                    const pPos = coords.get(node.parentId);
+                    const cPos = coords.get(node.id);
+                    if (pPos && cPos) {
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', pPos.x); line.setAttribute('y1', pPos.y);
+                        line.setAttribute('x2', cPos.x); line.setAttribute('y2', cPos.y);
+                        line.setAttribute('class', 'link');
+                        svg.appendChild(line);
+                    }
+                }
+                const pos = coords.get(node.id);
+                if (pos) {
+                    minX = Math.min(minX, pos.x); maxX = Math.max(maxX, pos.x);
+                    minY = Math.min(minY, pos.y); maxY = Math.max(maxY, pos.y);
+                }
+            });
+
+            // 3. Draw nodes
+            displayedNodes.forEach(node => {
+                const pos = coords.get(node.id);
+                if (!pos) return;
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', `node ${node === displayedNodes[displayedNodes.length-1] ? 'new' : ''}`);
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', pos.x); c.setAttribute('cy', pos.y); c.setAttribute('r', 20);
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', pos.x); t.setAttribute('y', pos.y); t.textContent = node.val;
+                g.appendChild(c); g.appendChild(t);
+                svg.appendChild(g);
+            });
+
+            const width = Math.max(maxX - minX + 100, 400);
+            const height = Math.max(maxY - minY + 100, 300);
+            const midX = (minX + maxX) / 2 || 0;
+            const midY = (minY + maxY) / 2 || 0;
+            
+            const vbW = width * zoomFactor;
+            const vbH = height * zoomFactor;
+            svg.setAttribute('viewBox', `${midX - vbW/2} ${midY - vbH/2} ${vbW} ${vbH}`);
+        }
+
+        function nextStep() {
+            if (currentStep >= steps.length) return;
+            
+            const step = steps[currentStep];
+            const rootVal = step.node.val;
+            
+            // UI Highlights
+            document.querySelectorAll('.item').forEach(i => i.className = 'item');
+            document.getElementById(`pre-${rootVal}`).classList.add('root');
+            document.getElementById(`in-${rootVal}`).classList.add('root');
+            
+            step.leftIno.forEach(v => document.getElementById(`in-${v}`).classList.add('left'));
+            step.rightIno.forEach(v => document.getElementById(`in-${v}`).classList.add('right'));
+            
+            document.getElementById('status').innerHTML = `当前根节点是 <span class="rose highlight">${rootVal}</span>。`;
+            document.getElementById('sub-status').innerHTML = `在中序遍历中找到 ${rootVal}，左侧是 <span class="purple">${step.leftIno.length}</span> 个节点，右侧是 <span class="emerald">${step.rightIno.length}</span> 个。`;
+            
+            displayedNodes.push(step.node);
+            renderTree();
+            
+            currentStep++;
+            if (currentStep >= steps.length) {
+                document.getElementById('next-btn').disabled = true;
+                document.getElementById('status').innerHTML = "🏁 <b>构造完成！</b>";
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; zoomFactor = Math.max(0.2, Math.min(5, zoomFactor)); renderTree(); }
+        function resetZoom() { zoomFactor = 1.0; renderTree(); }
+        function reset() { displayedNodes = []; init(); }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

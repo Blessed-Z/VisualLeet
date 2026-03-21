@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>236. 二叉树的最近公共祖先 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative; height: 450px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.5s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+        
+        .node.active circle { stroke: var(--amber); stroke-width: 4; fill: rgba(255, 190, 11, 0.1); }
+        .node.p-node circle { stroke: var(--rose-red); fill: rgba(255, 0, 110, 0.2); }
+        .node.q-node circle { stroke: var(--rose-red); fill: rgba(255, 0, 110, 0.2); }
+        .node.found-res circle { stroke: var(--emerald-green); stroke-width: 4; }
+        .node.lca circle { stroke: var(--primary-purple); stroke-width: 6; fill: rgba(157, 78, 221, 0.3); }
+
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.5s; }
+        .link.path { stroke: var(--emerald-green); stroke-width: 3; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .label-tag { position: absolute; top: -25px; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: var(--rose-red); color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👨‍👩‍👧‍👦 二叉树的最近公共祖先</h1>
+        <div class="status-box">
+            <div id="status">准备寻找节点 <span class="rose highlight">p=5</span> 和 <span class="rose highlight">q=4</span> 的集合点。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始递归搜救。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+            <svg id="tree-svg"></svg>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            val: 3, id: "0",
+            left: {
+                val: 5, id: "0L",
+                left: { val: 6, id: "0LL", left: null, right: null },
+                right: { val: 2, id: "0LR", left: { val: 7, id: "0LRL", left: null, right: null }, right: { val: 4, id: "0LRR", left: null, right: null } }
+            },
+            right: {
+                val: 1, id: "0R",
+                left: { val: 0, id: "0RL", left: null, right: null },
+                right: { val: 8, id: "0RR", left: null, right: null }
+            }
+        };
+        const P_VAL = 5, Q_VAL = 4;
+
+        let nodes = [], links = [], steps = [], currentStep = 0, zoomFactor = 1.0;
+
+        function flatten(node, x, y, dx) {
+            if (!node) return;
+            const n = { ...node, x, y };
+            nodes.push(n);
+            if (node.left) {
+                links.push({ source: n, target: node.left.id, sid: node.id, tid: node.left.id });
+                flatten(node.left, x - dx, y + 80, dx / 2);
+            }
+            if (node.right) {
+                links.push({ source: n, target: node.right.id, sid: node.id, tid: node.right.id });
+                flatten(node.right, x + dx, y + 80, dx / 2);
+            }
+        }
+
+        function solve(node) {
+            if (!node) return null;
+            
+            steps.push({ type: 'ENTER', node });
+            
+            if (node.val === P_VAL || node.val === Q_VAL) {
+                steps.push({ type: 'FOUND_SELF', node, res: node });
+                return node;
+            }
+            
+            const left = solve(node.left);
+            const right = solve(node.right);
+            
+            let res = null;
+            if (left && right) res = node;
+            else res = left || right;
+            
+            steps.push({ type: 'LEAVE', node, left, right, res });
+            return res;
+        }
+
+        const svg = document.getElementById('tree-svg');
+
+        function render() {
+            svg.innerHTML = '';
+            const step = steps[currentStep] || { node: null };
+            
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            nodes.forEach(n => {
+                minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+                minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+            });
+
+            links.forEach(l => {
+                const targetNode = nodes.find(n => n.id === l.tid);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', l.source.x); line.setAttribute('y1', l.source.y);
+                line.setAttribute('x2', targetNode.x); line.setAttribute('y2', targetNode.y);
+                line.setAttribute('class', 'link');
+                svg.appendChild(line);
+            });
+
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let cls = 'node';
+                if (step.node && step.node.id === n.id) cls += ' active';
+                if (n.val === P_VAL) cls += ' p-node';
+                if (n.val === Q_VAL) cls += ' q-node';
+                
+                // Show if this node was returned as a result in previous steps
+                const historyRes = steps.slice(0, currentStep).find(s => s.type === 'LEAVE' && s.res && s.res.id === n.id);
+                const isLCA = steps.slice(0, currentStep).some(s => s.type === 'LEAVE' && s.left && s.right && s.node.id === n.id);
+                
+                if (isLCA) cls += ' lca';
+                else if (historyRes) cls += ' found-res';
+
+                g.setAttribute('class', cls);
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', 20);
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', n.x); t.setAttribute('y', n.y); t.textContent = n.val;
+                
+                if (n.val === P_VAL || n.val === Q_VAL) {
+                    const tag = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    tag.setAttribute('x', n.x); tag.setAttribute('y', n.y - 30);
+                    tag.setAttribute('style', 'font-size: 10px; font-weight: bold; fill: var(--rose-red); text-anchor: middle;');
+                    tag.textContent = n.val === P_VAL ? "P" : "Q";
+                    g.appendChild(tag);
+                }
+
+                g.appendChild(c); g.appendChild(t);
+                svg.appendChild(g);
+            });
+
+            const width = Math.max(maxX - minX + 100, 400);
+            const height = Math.max(maxY - minY + 100, 300);
+            const midX = (minX + maxX) / 2 || 0;
+            const midY = (minY + maxY) / 2 || 0;
+            const vbW = width * zoomFactor; const vbH = height * zoomFactor;
+            svg.setAttribute('viewBox', `${midX - vbW/2} ${midY - vbH/2} ${vbW} ${vbH}`);
+        }
+
+        function nextStep() {
+            if (currentStep >= steps.length) return;
+            const step = steps[currentStep];
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'FOUND_SELF') {
+                status.innerHTML = `✨ <b>找到了一个目标！</b> <span class="rose highlight">正是节点 ${step.node.val}</span>。`;
+                if (step.node.val === P_VAL) {
+                    subStatus.innerHTML = `注意：因为我们找到了 <span class="rose">P (${P_VAL})</span>，而另一个目标 <span class="rose">Q (${Q_VAL})</span> 就在它的下面。<br><b class="amber">算法触发了“提前返回”：</b> 既然 P 是 Q 的长辈，P 自己就是最近公共祖先！`;
+                } else {
+                    subStatus.innerText = `立刻把这个喜报传回上一层。`;
+                }
+            } else if (step.type === 'ENTER') {
+                status.innerHTML = `汇总路口 <span class="amber highlight">${step.node.val}</span> 的情报。`;
+                if (step.left && step.right) {
+                    status.innerHTML = `💜 <b>重大发现！</b> 左右两边都有喜报。`;
+                    subStatus.innerText = `节点 ${step.node.val} 就是他们的最近公共祖先 (LCA)！`;
+                } else if (step.res) {
+                    subStatus.innerText = `只有一边传回了喜报（节点 ${step.res.val}），继续往上传。`;
+                } else {
+                    subStatus.innerText = `两边都没找到，向上汇报这片林子没人。`;
+                }
+            }
+
+            render();
+            currentStep++;
+            if (currentStep >= steps.length) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerHTML = `🏁 <b>寻找结束！</b>`;
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; zoomFactor = Math.max(0.2, Math.min(5, zoomFactor)); render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; init(); }
+
+        function init() {
+            nodes = []; links = []; steps = [];
+            flatten(treeData, 0, 0, 150);
+            solve(treeData);
+            render();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

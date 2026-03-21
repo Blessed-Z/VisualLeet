@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>155. 最小栈 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; min-height: 500px; }
+
+        .viz-card {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 30px; position: relative; display: flex; flex-direction: column; align-items: center;
+        }
+
+        .stack-label { font-size: 0.8em; color: #8b949e; text-transform: uppercase; margin-bottom: 20px; font-weight: bold; letter-spacing: 1px; }
+
+        .stack-view {
+            display: flex; flex-direction: column-reverse; align-items: center;
+            width: 120px; height: 350px; border: 4px solid #30363d; border-top: none;
+            border-radius: 0 0 20px 20px; background: rgba(22, 27, 34, 0.5);
+            padding: 10px; position: relative;
+        }
+
+        .stack-item {
+            width: 100%; height: 40px; margin-bottom: 5px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2em; font-weight: bold; font-family: monospace;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .data-item { background: var(--primary-purple); color: white; }
+        .min-item { background: var(--amber); color: black; }
+        .min-item.top-min { box-shadow: 0 0 15px var(--amber); transform: scale(1.05); border: 2px solid white; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 30px; align-items: center; }
+        input {
+            width: 60px; padding: 10px; background: #0d1117; border: 1px solid #30363d;
+            border-radius: 8px; color: white; text-align: center; font-size: 1.1em;
+        }
+        button {
+            padding: 12px 25px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1em;
+        }
+        .btn-push { background-color: var(--emerald-green); color: #000; }
+        .btn-pop { background-color: var(--rose-red); color: white; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎒 最小栈：双口袋模拟</h1>
+        <div class="status-box">
+            <div id="status">准备就绪。请输入一个数字并点击“PUSH”。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">观察辅助栈如何同步记录当前的最小值。</div>
+        </div>
+
+        <div class="main-content" id="viz">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+
+            <div class="viz-card">
+                <div class="stack-label">数据栈 (Stack)</div>
+                <div class="stack-view" id="data-stack"></div>
+            </div>
+
+            <div class="viz-card">
+                <div class="stack-label">辅助栈 (Min Stack)</div>
+                <div class="stack-view" id="min-stack"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="number" id="input-val" value="5">
+            <button class="btn-push" onclick="handlePush()">PUSH</button>
+            <button class="btn-pop" onclick="handlePop()">POP</button>
+            <button class="btn-reset" onclick="reset()">重置</button>
+        </div>
+    </div>
+
+    <script>
+        let dataStack = [];
+        let minStack = [];
+        let zoomFactor = 1.0;
+
+        function render() {
+            const dataView = document.getElementById('data-stack');
+            const minView = document.getElementById('min-stack');
+            dataView.innerHTML = '';
+            minView.innerHTML = '';
+
+            document.getElementById('viz').style.transform = `scale(${zoomFactor})`;
+
+            dataStack.forEach(val => {
+                const div = document.createElement('div');
+                div.className = 'stack-item data-item';
+                div.innerText = val;
+                dataView.appendChild(div);
+            });
+
+            minStack.forEach((val, idx) => {
+                const div = document.createElement('div');
+                div.className = 'stack-item min-item';
+                if (idx === minStack.length - 1) div.className += ' top-min';
+                div.innerText = val;
+                minView.appendChild(div);
+            });
+        }
+
+        function handlePush() {
+            const val = parseInt(document.getElementById('input-val').value);
+            if (isNaN(val)) return;
+
+            dataStack.push(val);
+            let pushedMin = false;
+            if (minStack.length === 0 || val <= minStack[minStack.length - 1]) {
+                minStack.push(val);
+                pushedMin = true;
+            }
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+            status.innerHTML = `PUSH 操作：压入数字 <span class="highlight-text">${val}</span>`;
+            if (pushedMin) {
+                subStatus.innerHTML = `✨ <span class="highlight-text">${val}</span> 是新的（或并列的）最小值，同时进入辅助栈。`;
+            } else {
+                subStatus.innerHTML = `当前最小值仍为 <span class="highlight-text">${minStack[minStack.length-1]}</span>，辅助栈保持不变。`;
+            }
+
+            render();
+            // Auto increment for next test
+            document.getElementById('input-val').value = Math.floor(Math.random() * 20);
+        }
+
+        function handlePop() {
+            if (dataStack.length === 0) return;
+
+            const val = dataStack.pop();
+            let poppedMin = false;
+            if (val === minStack[minStack.length - 1]) {
+                minStack.pop();
+                poppedMin = true;
+            }
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+            status.innerHTML = `POP 操作：弹出数字 <span class="highlight-text">${val}</span>`;
+            if (poppedMin) {
+                subStatus.innerHTML = `⚠️ 弹出的正是当前最小值，辅助栈同步弹出。新最小值为 <span class="highlight-text">${minStack.length > 0 ? minStack[minStack.length-1] : '无'}</span>。`;
+            } else {
+                subStatus.innerHTML = `弹出的不是最小值，辅助栈继续保持记录。`;
+            }
+
+            render();
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { 
+            dataStack = []; minStack = []; 
+            document.getElementById('status').innerText = "已重置。";
+            document.getElementById('sub-status').innerText = "请输入一个数字并点击“PUSH”。";
+            render(); 
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>

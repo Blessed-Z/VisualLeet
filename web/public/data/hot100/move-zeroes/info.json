@@ -1,0 +1,17 @@
+{
+  "id": 283,
+  "title": "283. 移动零",
+  "slug": "move-zeroes",
+  "link": "https://leetcode.cn/problems/move-zeroes/",
+  "difficulty": "Easy",
+  "description": "给定一个数组 nums，编写一个函数将所有 0 移动到数组的末尾，同时保持非零元素的相对顺序。请注意 ，必须在不复制数组的情况下原地对数组进行操作。",
+  "solutions": [
+    {
+      "name": "快慢指针 (最优)",
+      "file": "hash-map.py",
+      "time": "O(N)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --water-color: rgba(59, 130, 246, 0.5);
+        }
+
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); 
+            margin: 0; 
+            padding: 0; 
+            color: #fff; 
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* 自定义极简滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .container { 
+            width: 100%;
+            max-width: 800px;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 24px; 
+            padding: 40px 20px; /* 增加上下内边距 */
+        }
+        
+        .status-card { 
+            background: var(--card-bg); 
+            border: 1px solid var(--border-color); 
+            backdrop-blur: 12px;
+            padding: 16px 24px; 
+            border-radius: 24px; 
+            width: 100%; 
+            max-width: 600px; 
+            text-align: center; 
+            min-height: 80px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        .status-text { 
+            font-size: 0.95rem; 
+            color: #d1d1d6; 
+            line-height: 1.6; 
+        }
+        .highlight { font-weight: 800; text-shadow: 0 0 10px currentColor; }
+
+        .world { 
+            position: relative; 
+            width: 100%; 
+            height: 280px; 
+            display: flex; 
+            align-items: flex-end; 
+            justify-content: center; 
+            gap: 6px; 
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1); 
+            padding: 0 40px 0 40px; 
+            margin-top: 40px;
+        }
+        
+        .column { 
+            position: relative; 
+            flex: 1;
+            max-width: 35px;
+            background: #1c1c1e; 
+            border-radius: 6px 6px 0 0; 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 10; 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+        .water { 
+            position: absolute; 
+            bottom: 0; 
+            width: 100%; 
+            background: var(--water-color); 
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            border-radius: 3px 3px 0 0; 
+            z-index: 5; 
+            backdrop-filter: blur(2px);
+        }
+        
+        .pointer { 
+            position: absolute; 
+            top: -50px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+            width: 35px; 
+            z-index: 20;
+        }
+        .ptr-label { 
+            font-size: 0.65rem; 
+            font-weight: 900; 
+            background: #fff; 
+            color: #000;
+            padding: 2px 8px; 
+            border-radius: 6px; 
+            margin-bottom: 6px; 
+            text-transform: uppercase;
+        }
+        .ptr-arrow { 
+            width: 0; height: 0; 
+            border-left: 6px solid transparent; 
+            border-right: 6px solid transparent; 
+            border-top: 8px solid #fff; 
+        }
+        
+        #left-ptr .ptr-label { background: var(--primary-violet); color: #fff; }
+        #left-ptr .ptr-arrow { border-top-color: var(--primary-violet); }
+        #right-ptr .ptr-label { background: var(--primary-rose); color: #fff; }
+        #right-ptr .ptr-arrow { border-top-color: var(--primary-rose); }
+
+        .max-wall-label { 
+            position: absolute; 
+            width: 100%; 
+            height: 1px; 
+            border-top: 1.5px dashed currentColor; 
+            opacity: 0.3; 
+            pointer-events: none; 
+            transition: all 0.5s; 
+            z-index: 1; 
+        }
+        #left-max-line { color: var(--primary-violet); }
+        #right-max-line { color: var(--primary-rose); }
+
+        .stats { display: flex; gap: 12px; width: 100%; max-width: 600px; }
+        .stat-item { 
+            background: var(--card-bg); 
+            border: 1px solid var(--border-color); 
+            padding: 12px; 
+            border-radius: 20px; 
+            text-align: center; 
+            flex: 1; 
+        }
+        .stat-val { font-size: 1.4rem; font-weight: 800; color: var(--primary-emerald); font-mono; }
+        .stat-name { font-size: 0.6rem; color: #636366; text-transform: uppercase; margin-top: 4px; font-weight: bold; }
+
+        .controls { display: flex; gap: 16px; margin-top: 8px; }
+        button { 
+            padding: 12px 32px; 
+            border-radius: 16px; 
+            border: 1px solid var(--border-color); 
+            background: #1c1c1e; 
+            color: #fff; 
+            cursor: pointer; 
+            font-size: 0.85rem; 
+            font-weight: 600;
+            transition: all 0.2s; 
+        }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
+        button:active { transform: scale(0.95); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！左右卫兵向中间包抄，看看谁能接住更多的雨水。</div>
+        </div>
+
+        <div class="world" id="world">
+            <div id="left-ptr" class="pointer"><span class="ptr-label">Left</span><div class="ptr-arrow"></div></div>
+            <div id="right-ptr" class="pointer"><span class="ptr-label">Right</span><div class="ptr-arrow"></div></div>
+            <div id="left-max-line" class="max-wall-label"></div>
+            <div id="right-max-line" class="max-wall-label"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item"><div id="total-water" class="stat-val">0</div><div class="stat-name">TOTAL WATER</div></div>
+            <div class="stat-item" style="border-bottom: 2px solid var(--primary-violet)"><div id="l-max-val" class="stat-val" style="color:var(--primary-violet)">0</div><div class="stat-name">LEFT MAX</div></div>
+            <div class="stat-item" style="border-bottom: 2px solid var(--primary-rose)"><div id="r-max-val" class="stat-val" style="color:var(--primary-rose)">0</div><div class="stat-name">RIGHT MAX</div></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const heights = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1];
+        let left = 0;
+        let right = heights.length - 1;
+        let leftMax = 0;
+        let rightMax = 0;
+        let totalWater = 0;
+
+        function init() {
+            const world = document.getElementById('world');
+            const oldCols = world.querySelectorAll('.column');
+            oldCols.forEach(c => c.remove());
+
+            heights.forEach((h, idx) => {
+                const div = document.createElement('div');
+                div.className = 'column';
+                div.id = `col-${idx}`;
+                div.style.height = `${h * 35}px`;
+                div.innerHTML = `<div class="water" id="water-${idx}" style="height: 0"></div>`;
+                world.appendChild(div);
+            });
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI() {
+            const worldPadding = 40;
+            const containerWidth = document.getElementById('world').offsetWidth - (worldPadding * 2);
+            const colWidth = containerWidth / heights.length;
+            
+            document.getElementById('left-ptr').style.left = `${worldPadding + left * colWidth + (colWidth/2) - 17.5}px`;
+            document.getElementById('right-ptr').style.left = `${worldPadding + right * colWidth + (colWidth/2) - 17.5}px`;
+
+            document.getElementById('left-max-line').style.bottom = `${leftMax * 35}px`;
+            document.getElementById('right-max-line').style.bottom = `${rightMax * 35}px`;
+
+            document.getElementById('total-water').innerText = totalWater;
+            document.getElementById('l-max-val').innerText = leftMax;
+            document.getElementById('r-max-val').innerText = rightMax;
+
+            document.querySelectorAll('.column').forEach((c, idx) => {
+                c.style.borderColor = (idx === left || idx === right) ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)';
+                c.style.background = (idx === left) ? 'rgba(167, 139, 250, 0.3)' : (idx === right) ? 'rgba(251, 113, 133, 0.3)' : '#1c1c1e';
+                c.style.transform = (idx === left || idx === right) ? 'scaleX(1.1)' : 'scaleX(1)';
+            });
+        }
+
+        function nextStep() {
+            if (left >= right) return;
+            const status = document.getElementById('status');
+            leftMax = Math.max(leftMax, heights[left]);
+            rightMax = Math.max(rightMax, heights[right]);
+
+            if (leftMax < rightMax) {
+                const water = leftMax - heights[left];
+                totalWater += water;
+                status.innerHTML = `左墙 <span class="highlight" style="color:var(--primary-violet)">${leftMax}</span> 更矮。处理位置 ${left}，积水 <span class="highlight" style="color:var(--primary-emerald)">${water}</span>。`;
+                if (water > 0) {
+                    const waterEl = document.getElementById(`water-${left}`);
+                    waterEl.style.height = `${water * 35}px`;
+                    waterEl.style.bottom = `${heights[left] * 35}px`;
+                }
+                left++;
+            } else {
+                const water = rightMax - heights[right];
+                totalWater += water;
+                status.innerHTML = `右墙 <span class="highlight" style="color:var(--primary-rose)">${rightMax}</span> 更矮。处理位置 ${right}，积水 <span class="highlight" style="color:var(--primary-emerald)">${water}</span>。`;
+                if (water > 0) {
+                    const waterEl = document.getElementById(`water-${right}`);
+                    waterEl.style.height = `${water * 35}px`;
+                    waterEl.style.bottom = `${heights[right] * 35}px`;
+                }
+                right--;
+            }
+            updateUI();
+            if (left >= right) {
+                leftMax = Math.max(leftMax, heights[left]);
+                rightMax = Math.max(rightMax, heights[right]);
+                updateUI();
+                status.innerHTML = `🎉 任务完成！总积水量: <span class="highlight" style="color:var(--primary-emerald)">${totalWater}</span>。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function reset() {
+            left = 0; right = heights.length - 1;
+            leftMax = 0; rightMax = 0; totalWater = 0;
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+        window.onresize = updateUI;
+    </script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 800px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .jump-container {
+            width: 100%; height: 300px; background: var(--box-bg); border: 2px solid #475569;
+            border-radius: 20px; position: relative; padding: 100px 20px; display: flex; align-items: flex-end; justify-content: space-around;
+        }
+
+        .brick {
+            width: 50px; height: 50px; background: #334155; border: 2px solid #475569;
+            border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; transition: all 0.5s;
+        }
+        .brick.current { border-color: var(--amber); background: rgba(245, 158, 11, 0.1); transform: translateY(-10px); }
+        .brick.in-cur { border-color: var(--purple); background: rgba(139, 92, 246, 0.05); }
+        .brick.in-nex { border-color: var(--rose); background: rgba(236, 72, 153, 0.05); }
+        .brick .energy { font-weight: bold; font-size: 1.2rem; }
+        .brick .idx { position: absolute; bottom: -25px; font-size: 0.7rem; color: #64748b; }
+
+        .line { position: absolute; height: 4px; left: 35px; border-radius: 2px; transition: width 0.5s, top 0.5s; }
+        .cur-line { background: var(--purple); top: 40px; box-shadow: 0 0 10px var(--purple); }
+        .nex-line { background: var(--rose); top: 70px; box-shadow: 0 0 10px var(--rose); }
+        .line-label { position: absolute; top: -25px; right: 0; font-size: 0.7rem; font-weight: bold; }
+
+        .stats { display: flex; gap: 40px; }
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 0.8rem; color: #94a3b8; }
+        .stat-val { font-size: 1.8rem; font-weight: bold; color: var(--emerald); }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">最少跳几次能到终点呢？</div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">跳跃次数</div>
+                <div class="stat-val" id="ans-val">0</div>
+            </div>
+        </div>
+
+        <div class="jump-container" id="jump-area">
+            <div class="line cur-line" id="cur-line" style="width: 0;">
+                <span class="line-label" style="color: var(--purple);">当前步能到最远</span>
+            </div>
+            <div class="line nex-line" id="nex-line" style="width: 0;">
+                <span class="line-label" style="color: var(--rose);">探测下一跳最远</span>
+            </div>
+            <!-- Bricks will be injected here -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">走一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [2, 3, 1, 1, 4];
+        let i = 0;
+        let curRight = 0;
+        let nexRight = 0;
+        let ans = 0;
+
+        function init() {
+            const area = document.getElementById('jump-area');
+            area.querySelectorAll('.brick').forEach(b => b.remove());
+            nums.forEach((n, idx) => {
+                const b = document.createElement('div');
+                b.className = 'brick';
+                b.id = `brick-${idx}`;
+                b.innerHTML = `<span class="energy">${n}</span><span class="idx">${idx}</span>`;
+                area.appendChild(b);
+            });
+            updateLine('cur-line', 0);
+            updateLine('nex-line', 0);
+        }
+
+        function updateLine(id, val) {
+            const line = document.getElementById(id);
+            const percentage = (val / (nums.length - 1)) * 88;
+            line.style.width = `${percentage}%`;
+        }
+
+        function nextStep() {
+            if (i >= nums.length - 1) return;
+            const status = document.getElementById('status');
+            const energy = nums[i];
+
+            // Highlight current
+            document.querySelectorAll('.brick').forEach(b => b.classList.remove('current'));
+            const currentBrick = document.getElementById(`brick-${i}`);
+            currentBrick.classList.add('current');
+
+            // 1. Update NexRight
+            const reachFromHere = i + energy;
+            if (reachFromHere > nexRight) {
+                nexRight = reachFromHere;
+                status.innerText = `在第 ${i} 块砖，发现从这跳最远能到 ${nexRight}！`;
+                updateLine('nex-line', Math.min(nexRight, nums.length - 1));
+            }
+
+            // 2. Reach CurRight?
+            if (i === curRight) {
+                ans++;
+                curRight = nexRight;
+                status.innerText += ` 走到边界了，马里奥必须跳一下啦！`;
+                document.getElementById('ans-val').innerText = ans;
+                updateLine('cur-line', Math.min(curRight, nums.length - 1));
+            }
+
+            // Mark styles
+            for(let j=0; j<nums.length; j++) {
+                const b = document.getElementById(`brick-${j}`);
+                b.classList.remove('in-cur', 'in-nex');
+                if (j <= curRight) b.classList.add('in-cur');
+                else if (j <= nexRight) b.classList.add('in-nex');
+            }
+
+            i++;
+            if (i >= nums.length - 1) {
+                status.innerText = `马里奥到达终点！一共跳了 ${ans} 次。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function reset() {
+            i = 0; curRight = 0; nexRight = 0; ans = 0;
+            document.getElementById('ans-val').innerText = '0';
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "最少跳几次能到终点呢？";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

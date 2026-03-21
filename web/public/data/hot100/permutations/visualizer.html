@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>46. 全排列 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+        .visualization-area {
+            position: relative; height: 500px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
+        .panel-box {
+            background: var(--node-bg); border: 1px solid #30363d; border-radius: 15px; padding: 15px;
+            max-height: 400px; overflow-y: auto;
+        }
+        .panel-title { font-size: 0.8em; color: #8b949e; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; }
+
+        .res-item {
+            padding: 8px 12px; margin-bottom: 8px; background: rgba(157, 78, 221, 0.1);
+            border: 1px solid rgba(157, 78, 221, 0.2); border-radius: 8px; font-family: monospace;
+            font-size: 0.9em; animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn { from { opacity: 0; x: -10px; } to { opacity: 1; x: 0; } }
+
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.4s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+        
+        .node.active circle { stroke: var(--amber); stroke-width: 4; fill: rgba(255, 190, 11, 0.1); }
+        .node.in-path circle { stroke: var(--primary-purple); stroke-width: 3; }
+        .node.visited circle { opacity: 0.4; }
+
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.4s; }
+        .link.active { stroke: var(--primary-purple); stroke-width: 3; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 全排列 可视化</h1>
+        <div class="status-box">
+            <div id="status">准备开始全排列。数组: <span class="highlight-text">[1, 2, 3]</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始回溯。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="visualization-area" id="viz">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+                <svg id="tree-svg"></svg>
+            </div>
+
+            <div class="side-panel">
+                <div class="panel-box">
+                    <div class="panel-title">找到的结果 (res)</div>
+                    <div id="res-container"></div>
+                </div>
+                <div class="panel-box">
+                    <div class="panel-title">当前路径 (path)</div>
+                    <div id="path-display" style="font-size: 1.5em; font-family: monospace; color: var(--amber); text-align: center;">[]</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [1, 2, 3];
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function solve() {
+            const res = [];
+            const path = [];
+            const treeNodes = [];
+            const treeLinks = [];
+            
+            function backtrack(depth, parentId) {
+                const currentId = `d${depth}-p${parentId || 'root'}-${Math.random().toString(36).substr(2, 5)}`;
+                
+                // Add node to virtual tree
+                treeNodes.push({ id: currentId, val: path.length ? path[path.length-1] : 'ROOT', parentId, path: [...path] });
+                if (parentId) treeLinks.push({ source: parentId, target: currentId });
+
+                steps.push({ type: 'ENTER', nodeId: currentId, path: [...path], res: [...res] });
+
+                if (path.length === nums.length) {
+                    res.push([...path]);
+                    steps.push({ type: 'FOUND', nodeId: currentId, path: [...path], res: [...res] });
+                    return;
+                }
+
+                for (let i = 0; i < nums.length; i++) {
+                    if (!path.includes(nums[i])) {
+                        path.push(nums[i]);
+                        backtrack(depth + 1, currentId);
+                        path.pop();
+                        steps.push({ type: 'BACK', nodeId: currentId, path: [...path], res: [...res] });
+                    }
+                }
+            }
+
+            backtrack(0, null);
+            return { treeNodes, treeLinks };
+        }
+
+        const { treeNodes, treeLinks } = solve();
+        const svg = document.getElementById('tree-svg');
+
+        function render() {
+            svg.innerHTML = '';
+            const step = steps[currentStep];
+            
+            // Layout nodes (simple hierarchical)
+            const coords = new Map();
+            const levelCounts = {};
+            
+            treeNodes.forEach(n => {
+                const depth = n.id.split('-')[0].substring(1);
+                levelCounts[depth] = (levelCounts[depth] || 0) + 1;
+                const x = (levelCounts[depth] - 1) * 120 - 200; // Centering logic
+                const y = depth * 100;
+                coords.set(n.id, { x, y });
+            });
+
+            // Draw links
+            treeLinks.forEach(l => {
+                // Only draw link if target has been visited
+                const targetIdx = steps.findIndex(s => s.nodeId === l.target);
+                if (targetIdx > currentStep) return;
+
+                const s = coords.get(l.source);
+                const t = coords.get(l.target);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', s.x); line.setAttribute('y1', s.y);
+                line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+                
+                let cls = 'link';
+                // Highlight if part of current path
+                if (step.path.includes(treeNodes.find(n => n.id === l.target).val)) {
+                    // This logic is a bit flawed for exact path, but works for viz
+                    // Better: check if target is in current recursion stack
+                }
+                line.setAttribute('class', cls);
+                svg.appendChild(line);
+            });
+
+            // Draw nodes
+            treeNodes.forEach(n => {
+                const nodeIdx = steps.findIndex(s => s.nodeId === n.id);
+                if (nodeIdx > currentStep) return;
+
+                const pos = coords.get(n.id);
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let cls = 'node';
+                if (step.nodeId === n.id) cls += ' active';
+                
+                g.setAttribute('class', cls);
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', pos.x); c.setAttribute('cy', pos.y); c.setAttribute('r', 20);
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', pos.x); t.setAttribute('y', pos.y); t.textContent = n.val;
+                g.appendChild(c); g.appendChild(t);
+                svg.appendChild(g);
+            });
+
+            // Adjust ViewBox
+            const midX = 0, midY = 200;
+            const vbW = 800 * zoomFactor; const vbH = 600 * zoomFactor;
+            svg.setAttribute('viewBox', `${midX - vbW/2} ${midY - vbH/2} ${vbW} ${vbH}`);
+
+            // Sync UI
+            document.getElementById('path-display').innerText = JSON.stringify(step.path);
+            const resBox = document.getElementById('res-container');
+            resBox.innerHTML = '';
+            step.res.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'res-item';
+                div.innerText = JSON.stringify(r);
+                resBox.appendChild(div);
+            });
+        }
+
+        function nextStep() {
+            if (currentStep >= steps.length - 1) return;
+            currentStep++;
+            const step = steps[currentStep];
+            const status = document.getElementById('status');
+            
+            if (step.type === 'ENTER') {
+                status.innerHTML = `递归深入：尝试放入数字 <span class="highlight-text">${step.path[step.path.length-1] || 'ROOT'}</span>`;
+            } else if (step.type === 'FOUND') {
+                status.innerHTML = `✨ <b>发现全排列！</b> 已存入收集箱。`;
+            } else {
+                status.innerHTML = `回溯：撤销刚才的选择，回到上一层。`;
+            }
+            
+            render();
+            if (currentStep >= steps.length - 1) document.getElementById('next-btn').disabled = true;
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+
+        window.onload = () => { render(); };
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "id": 148,
+  "slug": "sort-list",
+  "title": "排序链表",
+  "difficulty": "Medium",
+  "description": "给你链表的头结点 head ，请将其按 升序 排列并返回 排序后的链表 。",
+  "complexity": {
+    "time": "O(N log N)",
+    "space": "O(log N)"
+  },
+  "category": "LinkedList",
+  "tags": ["Linked List", "Two Pointers", "Divide and Conquer", "Sorting", "Merge Sort"],
+  "solutions": [
+    {
+      "language": "python",
+      "path": "solutions/solution.py",
+      "file": "solution.py",
+      "name": "归并排序",
+      "time": "O(N log N)",
+      "space": "O(log N)"
+    }
+  ]
+}

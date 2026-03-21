@@ -1,0 +1,17 @@
+{
+  "id": 76,
+  "title": "76. 最小覆盖子串",
+  "slug": "minimum-window-substring",
+  "link": "https://leetcode.cn/problems/minimum-window-substring/",
+  "difficulty": "Hard",
+  "description": "给你一个字符串 s 、一个字符串 t 。返回 s 中涵盖 t 所有字符的最小子串。如果 s 中不存在涵盖 t 所有字符的子串，则返回空字符串 \"\" 。",
+  "solutions": [
+    {
+      "name": "滑动窗口 + Counter 比较 (最优)",
+      "file": "hash-map.py",
+      "time": "O(N + M)",
+      "space": "O(K)",
+      "is_optimal": true
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": 131,
+  "slug": "palindrome-partitioning",
+  "title": "分割回文串",
+  "difficulty": "Medium",
+  "category": "回溯",
+  "tags": ["String", "Backtracking", "Dynamic Programming"],
+  "description": "给你一个字符串 s，请你将 s 分割成一些子串，使每个子串都是回文串。返回 s 所有可能的分割方案。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "回溯 DFS",
+      "time": "O(N \\times 2^N)",
+      "space": "O(N^2)"
+    }
+  ]
+}

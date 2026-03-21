@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>22. 括号生成 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 350px 1fr; gap: 25px; }
+
+        /* Left Side: Balance/Stat Area */
+        .stat-panel {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 25px; display: flex; flex-direction: column; gap: 30px; align-items: center;
+        }
+        .balance-view {
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+        .scale-container {
+            width: 200px; height: 100px; border-bottom: 4px solid #30363d;
+            display: flex; justify-content: space-around; align-items: flex-end; position: relative;
+        }
+        .scale-arm {
+            position: absolute; bottom: 0; left: 50%; width: 180px; height: 4px; background: #8b949e;
+            transform-origin: center; transition: transform 0.5s ease;
+        }
+        .bucket { width: 60px; height: 60px; border: 2px solid #30363d; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; background: var(--node-bg); }
+        .bucket.left { color: var(--primary-purple); border-color: var(--primary-purple); }
+        .bucket.right { color: var(--amber); border-color: var(--amber); }
+
+        .progress-indicator { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .progress-label { font-size: 0.8em; color: #8b949e; display: flex; justify-content: space-between; }
+        .bar-bg { width: 100%; height: 12px; background: #0d1117; border-radius: 6px; border: 1px solid #30363d; overflow: hidden; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary-purple), var(--emerald-green)); width: 0%; transition: width 0.5s; }
+
+        /* Right Side: Tree Area */
+        .tree-area {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            position: relative; overflow: visible; padding: 20px; height: 500px;
+        }
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.4s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; }
+        .node.active circle { stroke: var(--amber); stroke-width: 4; fill: rgba(255, 190, 11, 0.1); }
+        .node.success circle { stroke: var(--emerald-green); stroke-width: 4; }
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.4s; }
+        .link.active { stroke: var(--primary-purple); stroke-width: 3; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .current-str {
+            font-family: monospace; font-size: 2.2em; color: var(--amber);
+            background: rgba(255, 190, 11, 0.05); padding: 10px 25px;
+            border-radius: 15px; border: 1px dashed rgba(255, 190, 11, 0.2);
+            letter-spacing: 4px; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⛩️ 括号生成：魔法平衡</h1>
+        <div class="status-box">
+            <div id="status">准备开始生成。目标对数: <span style="color:var(--amber); font-weight:bold;">n = 2</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">规则：左括号随便放，右括号得看左括号剩多少。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="stat-panel">
+                <div class="balance-view">
+                    <div style="font-size: 0.8em; color: #8b949e;">左右括号平衡器</div>
+                    <div class="scale-container">
+                        <div class="scale-arm" id="scale-arm"></div>
+                        <div class="bucket left" id="left-count">( 0</div>
+                        <div class="bucket right" id="right-count">0 )</div>
+                    </div>
+                </div>
+                <div class="progress-indicator">
+                    <div class="progress-label"><span>填充进度</span><span id="progress-text">0/4</span></div>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-fill"></div></div>
+                </div>
+                <div style="width:100%; text-align:center;">
+                    <div style="font-size: 0.7em; color: #8b949e; text-transform: uppercase;">当前序列</div>
+                    <div class="current-str" id="current-str">_ _ _ _</div>
+                </div>
+            </div>
+
+            <div class="tree-area" id="viz">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+                <svg id="tree-svg"></svg>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const n = 2;
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function solve() {
+            const res = [];
+            const cur = [];
+            const treeNodes = [];
+            const treeLinks = [];
+
+            function backtrack(symbol, index, parentId) {
+                const nodeId = `idx${index}-sym${symbol}-${Math.random()}`;
+                const val = cur.length ? cur[cur.length - 1] : 'START';
+                
+                treeNodes.push({ id: nodeId, val, symbol, index, parentId });
+                if (parentId) treeLinks.push({ source: parentId, target: nodeId });
+
+                steps.push({ type: 'ENTER', nodeId, symbol, index, cur: [...cur], res: [...res] });
+
+                if (n * 2 === index) {
+                    if (symbol === 0) {
+                        res.push(cur.join(''));
+                        steps.push({ type: 'SUCCESS', nodeId, symbol, index, cur: [...cur], res: [...res] });
+                    }
+                    return;
+                }
+
+                // Try '('
+                if ((index + symbol) / 2 < n) {
+                    cur.push('(');
+                    backtrack(symbol + 1, index + 1, nodeId);
+                    cur.pop();
+                    steps.push({ type: 'BACK', nodeId, symbol, index, cur: [...cur], res: [...res] });
+                }
+
+                // Try ')'
+                if (symbol > 0) {
+                    cur.push(')');
+                    backtrack(symbol - 1, index + 1, nodeId);
+                    cur.pop();
+                    steps.push({ type: 'BACK', nodeId, symbol, index, cur: [...cur], res: [...res] });
+                }
+            }
+
+            backtrack(0, 0, null);
+            return { treeNodes, treeLinks };
+        }
+
+        const { treeNodes, treeLinks } = solve();
+        const svg = document.getElementById('tree-svg');
+
+        function render() {
+            svg.innerHTML = '';
+            const step = steps[currentStep];
+            if (!step) return;
+
+            // Sync Scale & Stats
+            const leftCount = (step.index + step.symbol) / 2;
+            const rightCount = step.index - leftCount;
+            document.getElementById('left-count').innerText = `( ${leftCount}`;
+            document.getElementById('right-count').innerText = `${rightCount} )`;
+            
+            // Rotate scale based on balance. More left = heavy on left (negative rotate)
+            const rotation = (leftCount - rightCount) * -5;
+            document.getElementById('scale-arm').style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+            
+            const progress = (step.index / (n * 2)) * 100;
+            document.getElementById('bar-fill').style.width = `${progress}%`;
+            document.getElementById('progress-text').innerText = `${step.index}/${n*2}`;
+            
+            const displayArr = Array(n*2).fill('_');
+            step.cur.forEach((c, i) => displayArr[i] = c);
+            document.getElementById('current-str').innerText = displayArr.join(' ');
+
+            // Layout Tree
+            const coords = new Map();
+            const levelCounts = {};
+            treeNodes.forEach(tn => {
+                const depth = tn.index;
+                levelCounts[depth] = (levelCounts[depth] || 0) + 1;
+                const x = (levelCounts[depth] - 1) * 80 - (depth * 30);
+                const y = depth * 70;
+                coords.set(tn.id, { x, y });
+            });
+
+            treeLinks.forEach(l => {
+                const targetIdx = steps.findIndex(s => s.nodeId === l.target);
+                if (targetIdx > currentStep) return;
+                const s = coords.get(l.source); const t = coords.get(l.target);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', s.x); line.setAttribute('y1', s.y);
+                line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+                line.setAttribute('class', 'link');
+                svg.appendChild(line);
+            });
+
+            treeNodes.forEach(tn => {
+                const firstVisit = steps.findIndex(s => s.nodeId === tn.id);
+                if (firstVisit > currentStep) return;
+                const pos = coords.get(tn.id);
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let cls = 'node';
+                if (step.nodeId === tn.id) cls += ' active';
+                const nodeStep = steps.find((s, i) => i <= currentStep && s.nodeId === tn.id && s.type === 'SUCCESS');
+                if (nodeStep) cls += ' success';
+                g.setAttribute('class', cls);
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', pos.x); c.setAttribute('cy', pos.y); c.setAttribute('r', 18);
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', pos.x); t.setAttribute('y', pos.y); t.textContent = tn.val;
+                g.appendChild(c); g.appendChild(t);
+                svg.appendChild(g);
+            });
+
+            const vbW = 600 * zoomFactor; const vbH = 500 * zoomFactor;
+            svg.setAttribute('viewBox', `-200 0 ${vbW} ${vbH}`);
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                const step = steps[currentStep];
+                const status = document.getElementById('status');
+                const subStatus = document.getElementById('sub-status');
+
+                if (step.type === 'ENTER') {
+                    status.innerHTML = `深入递归：添加了 <span style="color:var(--amber)">${step.cur[step.cur.length-1]}</span>`;
+                    subStatus.innerText = `当前已填充 ${step.index} 个字符。`;
+                } else if (step.type === 'SUCCESS') {
+                    status.innerHTML = `✨ <b>生成合法组合！</b>`;
+                    subStatus.innerHTML = `<span style="color:var(--emerald-green)">${step.cur.join('')}</span> 已存入结果列表。`;
+                } else {
+                    status.innerHTML = `回溯：撤销选择，准备换一种放法。`;
+                    subStatus.innerText = `回到上一步的状态。`;
+                }
+                render();
+            } else {
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+
+        window.onload = render;
+    </script>
+</body>
+</html>

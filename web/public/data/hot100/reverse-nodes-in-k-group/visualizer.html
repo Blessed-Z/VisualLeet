@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>25. K 个一组翻转链表 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto; /* 强制允许纵向滚动 */
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 0; /* 增加上下内边距 */
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-bottom: 100px; /* 底部留白，确保按钮不贴边 */
+        }
+
+        .status-box {
+            background-color: var(--node-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid var(--primary-purple);
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative;
+            height: 350px; /* 稍微调低一点高度 */
+            border: 1px solid #30363d;
+            border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: visible; /* 允许指针等元素略微溢出 */
+        }
+
+        .list-row {
+            display: flex;
+            align-items: center;
+            position: relative;
+            transition: all 0.8s ease;
+        }
+
+        .node-group {
+            display: flex;
+            align-items: center;
+            position: relative;
+            width: 100px;
+            justify-content: center;
+        }
+
+        .node {
+            width: 55px;
+            height: 55px;
+            border-radius: 15px;
+            background-color: var(--node-bg);
+            border: 2px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            z-index: 5;
+        }
+
+        .node.dummy { border-style: dashed; border-color: #8b949e; color: #8b949e; }
+        .node.in-group { border-color: var(--amber); box-shadow: 0 0 10px rgba(255, 190, 11, 0.2); }
+        .node.reversing { border-color: var(--rose-red); transform: scale(1.1); }
+        .node.done { border-color: var(--emerald-green); }
+
+        .arrow {
+            position: absolute;
+            right: -15px;
+            font-size: 24px;
+            color: #30363d;
+            z-index: 1;
+            transition: all 0.5s ease;
+            user-select: none;
+        }
+
+        .arrow.active { color: var(--rose-red); }
+        .arrow.reversed { color: var(--emerald-green); transform: rotate(180deg); }
+        .arrow.hidden { opacity: 0; }
+
+        /* Pointers */
+        .pointer {
+            position: absolute;
+            width: 65px;
+            height: 65px;
+            border-radius: 18px;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ptr-label {
+            position: absolute;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+        }
+
+        #ptr-prev { border-color: var(--primary-purple); }
+        #ptr-prev .ptr-label { background: var(--primary-purple); top: -35px; }
+
+        #ptr-curr { border-color: var(--amber); }
+        #ptr-curr .ptr-label { background: var(--amber); color: black; bottom: -35px; }
+
+        #ptr-tail { border-color: var(--rose-red); }
+        #ptr-tail .ptr-label { background: var(--rose-red); top: -35px; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 35px;
+            border-radius: 35px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            filter: brightness(1.2);
+        }
+        
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .step-info {
+            font-size: 0.9em;
+            color: #8b949e;
+            margin-top: 10px;
+        }
+
+        .highlight-text { font-weight: bold; }
+        .purple { color: var(--primary-purple); }
+        .rose { color: var(--rose-red); }
+        .amber { color: var(--amber); }
+        .emerald { color: var(--emerald-green); }
+
+        /* SVG for curved arrows if needed later */
+        .svg-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📦 K 个一组翻转链表</h1>
+        <div class="status-box">
+            <div id="status">准备开始！设定 <span class="highlight-text amber">k = 2</span>，链表为 [1, 2, 3, 4, 5]。</div>
+            <div id="sub-status" class="step-info">点击下一步开始寻找第一组。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <!-- Pointers -->
+            <div id="ptr-prev" class="pointer"><span class="ptr-label">Prev</span></div>
+            <div id="ptr-curr" class="pointer"><span class="ptr-label">Curr</span></div>
+            <div id="ptr-tail" class="pointer"><span class="ptr-label">Tail</span></div>
+
+            <div class="list-row" id="list-container">
+                <!-- Nodes injected here -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const k = 2;
+        const initialVals = [1, 2, 3, 4, 5];
+        let vals = [...initialVals];
+        let prevIdx = 0; // 0 is Dummy
+        let tailIdx = 0;
+        let currIdx = 1;
+        
+        /**
+         * subStep:
+         * 0: Find k nodes (moving tail)
+         * 1: If found, prepare to reverse
+         * 2: Reversing inner pointers (visualized by swapping nodes for clarity in this row layout, but with detailed status)
+         * 3: Reconnect prev and next
+         * 4: Move prev to new tail
+         */
+        let phase = 0; 
+        let internalStep = 0;
+
+        function init() {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+            
+            // Dummy
+            addNode(container, 'D', 'dummy', 0);
+            
+            // Nodes
+            initialVals.forEach((v, i) => {
+                addNode(container, v, '', i + 1);
+            });
+
+            prevIdx = 0;
+            tailIdx = 0;
+            currIdx = 1;
+            phase = 0;
+            internalStep = 0;
+            vals = [...initialVals];
+            
+            updatePointers();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function addNode(parent, val, className, id) {
+            const group = document.createElement('div');
+            group.className = 'node-group';
+            group.id = `group-${id}`;
+            
+            const node = document.createElement('div');
+            node.className = `node ${className}`;
+            node.innerText = val;
+            node.id = `node-${id}`;
+            group.appendChild(node);
+            
+            if (id <= initialVals.length) {
+                const arrow = document.createElement('div');
+                arrow.className = 'arrow';
+                arrow.innerText = '→';
+                arrow.id = `arrow-${id}`;
+                group.appendChild(arrow);
+            }
+            parent.appendChild(group);
+        }
+
+        function updatePointers() {
+            const pPtr = document.getElementById('ptr-prev');
+            const cPtr = document.getElementById('ptr-curr');
+            const tPtr = document.getElementById('ptr-tail');
+            
+            const containerWidth = (initialVals.length + 1) * 100;
+            const startPos = -containerWidth / 2 + 50; 
+            
+            pPtr.style.transform = `translateX(${startPos + (prevIdx * 100)}px)`;
+            
+            if (currIdx <= initialVals.length + 1) {
+                cPtr.style.opacity = 1;
+                cPtr.style.transform = `translateX(${startPos + (currIdx * 100)}px)`;
+            } else {
+                cPtr.style.opacity = 0;
+            }
+
+            if (tailIdx <= initialVals.length) {
+                tPtr.style.opacity = 1;
+                tPtr.style.transform = `translateX(${startPos + (tailIdx * 100)}px)`;
+            } else {
+                tPtr.style.opacity = 0;
+            }
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (phase === 0) {
+                // Phase 0: Find k nodes
+                tailIdx++;
+                internalStep++;
+                
+                document.querySelectorAll('.node').forEach(n => n.classList.remove('in-group', 'reversing'));
+                for(let i = prevIdx + 1; i <= tailIdx; i++) {
+                    document.getElementById(`node-${i}`).classList.add('in-group');
+                }
+
+                status.innerHTML = `第一阶段：正在寻找一组 <span class="amber">${k}</span> 个节点。`;
+                subStatus.innerHTML = `Tail 指针向后移，目前组内有 <span class="highlight-text amber">${internalStep}</span> 个节点。`;
+
+                if (internalStep === k) {
+                    phase = 1; // Found
+                } else if (tailIdx > initialVals.length) {
+                    status.innerHTML = `🏁 <b>任务结束！</b>`;
+                    subStatus.innerHTML = `剩余节点不足 ${k} 个，保持原样不动。`;
+                    document.getElementById('next-btn').disabled = true;
+                    return;
+                }
+            } else if (phase === 1) {
+                // Phase 1: Prepare reverse
+                status.innerHTML = `第二阶段：够数了！准备反转这组节点。`;
+                subStatus.innerHTML = `我们将记录组头的下一个节点 <span class="rose">Next = Tail.next</span>，防止后面链表丢了。`;
+                
+                for(let i = prevIdx + 1; i <= tailIdx; i++) {
+                    document.getElementById(`node-${i}`).classList.add('reversing');
+                }
+                phase = 2;
+            } else if (phase === 2) {
+                // Phase 2: Show the reversal (Detailed explanation)
+                status.innerHTML = `第三阶段：<span class="rose">内部指针反转！</span>`;
+                subStatus.innerHTML = `1. 断开原来的线<br>2. 让节点反向指回前一个<br>3. 这一组现在变成了 <span class="emerald">逆序</span>。`;
+                
+                // Visual Swap logic for the k elements
+                const start = prevIdx + 1;
+                const end = tailIdx;
+                
+                // Real data swap for the visualization
+                const slice = vals.slice(start - 1, end);
+                slice.reverse();
+                for(let i = 0; i < slice.length; i++) {
+                    vals[start - 1 + i] = slice[i];
+                    const node = document.getElementById(`node-${start + i}`);
+                    node.innerText = vals[start - 1 + i];
+                    node.classList.remove('reversing');
+                    node.classList.add('done');
+                    
+                    if (start + i < end) {
+                        document.getElementById(`arrow-${start + i}`).classList.add('reversed');
+                    }
+                }
+                phase = 3;
+            } else if (phase === 3) {
+                // Phase 3: Reconnect prev and move on
+                status.innerHTML = `第四阶段：<span class="emerald">重连链表</span>`;
+                subStatus.innerHTML = `1. 让 <span class="purple">Prev.next</span> 指向反转后的组头。<br>2. 让反转后的组尾指向之前的 <span class="rose">Next</span>。`;
+                
+                // Move pointers for next cycle
+                phase = 4;
+            } else if (phase === 4) {
+                // Move Prev
+                status.innerHTML = `准备下一组：移动 <span class="purple">Prev</span> 指针。`;
+                subStatus.innerHTML = `Prev 现在移到这组翻转后的末尾，重新开始寻找下 ${k} 个。`;
+                
+                document.querySelectorAll('.node').forEach(n => n.classList.remove('done'));
+                document.querySelectorAll('.arrow').forEach(a => a.classList.remove('reversed'));
+                
+                prevIdx = tailIdx;
+                currIdx = prevIdx + 1;
+                internalStep = 0;
+                phase = 0;
+            }
+
+            updatePointers();
+        }
+
+        function reset() {
+            init();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

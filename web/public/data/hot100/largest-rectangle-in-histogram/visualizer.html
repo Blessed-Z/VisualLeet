@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>84. 柱状图中最大的矩形 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--amber); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 1fr 200px; gap: 25px; min-height: 500px; }
+
+        /* Left Side: Histogram */
+        .viz-panel {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 40px; position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+        }
+
+        .histogram {
+            display: flex; align-items: flex-end; gap: 10px; height: 300px; width: 100%;
+            border-bottom: 2px solid #30363d; position: relative;
+        }
+        .bar-container { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; position: relative; }
+        .bar {
+            width: 100%; background: var(--primary-purple); border-radius: 4px 4px 0 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex; align-items: flex-start; justify-content: center; padding-top: 5px;
+            font-size: 0.8em; font-weight: bold; color: white;
+        }
+        .bar.active { background: var(--amber); box-shadow: 0 0 15px var(--amber); }
+        .bar.sentinel { background: rgba(255, 255, 255, 0.05); border: 1px dashed #444; color: #444; }
+        .bar.calculating { background: var(--rose-red); }
+
+        .rect-overlay {
+            position: absolute; bottom: 0; background: rgba(6, 214, 160, 0.3);
+            border: 2px solid var(--emerald-green); z-index: 5; pointer-events: none;
+            transition: all 0.5s; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: var(--emerald-green); text-shadow: 0 0 10px black;
+        }
+
+        .bar-idx { font-size: 0.7em; color: #8b949e; margin-top: 5px; }
+
+        /* Right Side: Stack */
+        .stack-area { display: flex; flex-direction: column; align-items: center; }
+        .stack-view {
+            width: 100px; height: 400px; border: 4px solid #30363d; border-top: none;
+            border-radius: 0 0 20px 20px; background: rgba(22, 27, 34, 0.5);
+            display: flex; flex-direction: column-reverse; align-items: center; padding: 10px;
+        }
+        .stack-item {
+            width: 100%; height: 40px; margin-bottom: 4px; border-radius: 6px;
+            background: var(--primary-purple); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-family: monospace; font-size: 0.9em;
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+        .max-area-badge { position: absolute; top: 20px; left: 20px; background: rgba(255, 0, 110, 0.1); border: 1px solid var(--rose-red); color: var(--rose-red); padding: 5px 15px; border-radius: 8px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⛺ 柱状图最大矩形：帐篷搭建演示</h1>
+        <div class="status-box">
+            <div id="status">准备分析柱状图。高度: <span class="highlight-text">[2, 1, 5, 6, 2, 3]</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">我们在结尾加上高度为 -1 的哨兵，确保最后能全部弹出。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="viz-panel" id="viz">
+                <div class="max-area-badge">最大面积: <span id="max-area">0</span></div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+
+                <div class="histogram" id="hist-container">
+                    <div id="rect-overlay" class="rect-overlay" style="display:none"></div>
+                </div>
+            </div>
+
+            <div class="stack-area">
+                <div style="font-size: 0.7em; color: #8b949e; margin-bottom: 10px; font-weight: bold;">单调递增栈 (索引)</div>
+                <div class="stack-view" id="stack-view"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const heights = [2, 1, 5, 6, 2, 3];
+        const heightsWithSentinel = [...heights, -1];
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function generateSteps() {
+            steps = [];
+            let stack = [-1];
+            let maxArea = 0;
+            
+            steps.push({ type: 'INIT', stack: [-1], curIdx: -1, h: 0, maxArea: 0 });
+
+            for (let right = 0; right < heightsWithSentinel.length; right++) {
+                const h = heightsWithSentinel[right];
+                
+                while (stack.length > 1 && heightsWithSentinel[stack[stack.length - 1]] > h) {
+                    const i = stack.pop();
+                    const left = stack[stack.length - 1];
+                    const height = heightsWithSentinel[i];
+                    const width = right - left - 1;
+                    const area = height * width;
+                    maxArea = Math.max(maxArea, area);
+                    
+                    steps.push({ 
+                        type: 'CALC', right, left, i, height, width, area, 
+                        stack: [...stack], maxArea, h 
+                    });
+                }
+                stack.push(right);
+                steps.push({ type: 'PUSH', right, stack: [...stack], maxArea, h });
+            }
+            steps.push({ type: 'DONE', stack: [...stack], maxArea, right: -1 });
+        }
+
+        function render() {
+            const step = steps[currentStep];
+            if (!step) return;
+
+            document.getElementById('viz').style.transform = `scale(${zoomFactor})`;
+
+            // Render Histogram
+            const container = document.getElementById('hist-container');
+            const overlay = document.getElementById('rect-overlay');
+            
+            // Clean up old bars but keep overlay
+            const oldBars = container.querySelectorAll('.bar-container');
+            oldBars.forEach(b => b.remove());
+
+            heightsWithSentinel.forEach((h, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'bar-container';
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                if (h === -1) bar.classList.add('sentinel');
+                if (idx === step.right) bar.classList.add('active');
+                if (step.type === 'CALC' && idx === step.i) bar.classList.add('calculating');
+                if (step.type === 'CALC' && idx > step.left && idx < step.right) {
+                    // Logic for bars within the current calculated rectangle
+                }
+                
+                bar.style.height = `${Math.max(h, 0) * 40 + 10}px`;
+                bar.innerText = h === -1 ? '-1' : h;
+                
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'bar-idx';
+                idxLabel.innerText = idx;
+                
+                wrapper.appendChild(bar);
+                wrapper.appendChild(idxLabel);
+                container.appendChild(wrapper);
+            });
+
+            // Update Overlay
+            if (step.type === 'CALC') {
+                overlay.style.display = 'flex';
+                // Width calculation
+                const gap = 10;
+                const barWidth = container.querySelector('.bar-container').offsetWidth;
+                const totalWidth = step.width * barWidth + (step.width - 1) * gap;
+                overlay.style.width = `${totalWidth}px`;
+                overlay.style.height = `${step.height * 40}px`;
+                
+                // Left position
+                const leftCell = container.querySelectorAll('.bar-container')[step.left + 1];
+                overlay.style.left = `${leftCell.offsetLeft}px`;
+                overlay.innerText = `${step.width} × ${step.height} = ${step.area}`;
+            } else {
+                overlay.style.display = 'none';
+            }
+
+            // Render Stack
+            const stackView = document.getElementById('stack-view');
+            stackView.innerHTML = '';
+            step.stack.forEach(idx => {
+                const div = document.createElement('div');
+                div.className = 'stack-item';
+                div.innerText = idx;
+                stackView.appendChild(div);
+            });
+
+            document.getElementById('max-area').innerText = step.maxArea;
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'INIT') {
+                status.innerHTML = `开始巡逻柱子...`;
+                subStatus.innerText = "栈中放入 -1，作为所有计算的左地基。";
+            } else if (step.type === 'PUSH') {
+                status.innerHTML = `柱子 ${step.right}: <span class="highlight-text">高度 ${step.h}</span>`;
+                subStatus.innerText = "比刚才的高，暂时找不到右边界，先入栈排队。";
+            } else if (step.type === 'CALC') {
+                status.innerHTML = `<span class="rose">发现矮个子！</span> 柱子 ${step.right} (高 ${step.h}) 比栈顶矮。`;
+                subStatus.innerHTML = `弹出栈顶索引 <span class="highlight-text">${step.i}</span> (高 ${step.height})。<br>它的左右边界是 [${step.left}, ${step.right}]，宽度为 ${step.width}。面积为 <span class="emerald">${step.area}</span>。`;
+            } else if (step.type === 'DONE') {
+                status.innerHTML = `🎉 <b>全部计算完毕！</b>`;
+                subStatus.innerHTML = `最终的最大矩形面积为 <span class="highlight-text">${step.maxArea}</span>。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+
+        generateSteps();
+        window.onload = render;
+    </script>
+</body>
+</html>

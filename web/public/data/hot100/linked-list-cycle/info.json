@@ -1,0 +1,17 @@
+{
+  "id": 141,
+  "title": "141. 环形链表",
+  "slug": "linked-list-cycle",
+  "link": "https://leetcode.cn/problems/linked-list-cycle/",
+  "difficulty": "Easy",
+  "description": "给你一个链表的头节点 head ，判断链表中是否有环。",
+  "solutions": [
+    {
+      "name": "快慢指针 (最优)",
+      "file": "fast-slow.py",
+      "time": "O(N)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": 108,
+  "slug": "convert-sorted-array-to-binary-search-tree",
+  "title": "将有序数组转换为二叉搜索树",
+  "difficulty": "Easy",
+  "category": "二叉树",
+  "tags": ["Array", "Divide and Conquer", "Tree", "Binary Search Tree", "Binary Tree"],
+  "description": "给你一个整数数组 nums ，其中元素已经按 升序 排列，请你将其转换为一棵 平衡 二叉搜索树。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "中点递归构造法",
+      "time": "O(N)",
+      "space": "O(log N)"
+    }
+  ]
+}

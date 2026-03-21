@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 15px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+            text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        /* Tally Area */
+        .tally-container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        .tally-box {
+            padding: 10px 15px; background: var(--box-bg); border: 2px solid #475569; border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; transition: all 0.3s;
+        }
+        .tally-box.active { border-color: var(--amber); transform: scale(1.1); box-shadow: 0 0 15px var(--amber); }
+        .tally-box .num { font-weight: bold; font-size: 1.2rem; }
+        .tally-box .count { font-size: 0.8rem; color: var(--purple); }
+
+        /* Bucket Area */
+        .buckets-wrapper { display: flex; gap: 20px; align-items: flex-end; height: 250px; padding-bottom: 40px; }
+        .bucket {
+            width: 60px; min-height: 40px; background: rgba(30, 41, 59, 0.3); border: 2px dashed #475569;
+            border-radius: 8px 8px 0 0; display: flex; flex-direction: column-reverse; align-items: center;
+            position: relative; transition: all 0.5s;
+        }
+        .bucket.highlight { border-style: solid; border-color: var(--emerald); background: rgba(16, 185, 129, 0.1); }
+        .bucket.current { border-color: var(--amber); border-style: solid; box-shadow: 0 0 15px var(--amber); }
+        .bucket::after {
+            content: attr(data-freq) "次"; position: absolute; bottom: -25px; font-size: 0.7rem; color: #94a3b8;
+        }
+        .item {
+            width: 40px; height: 30px; background: var(--purple); margin-bottom: 4px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .item.picked { background: var(--emerald); box-shadow: 0 0 10px var(--emerald); }
+
+        @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 10px 25px; border-radius: 8px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; }
+        button.primary { background: var(--purple); }
+        button.primary:hover { background: #7c3aed; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .result-area { display: flex; gap: 10px; font-size: 1.2rem; font-weight: bold; color: var(--emerald); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">准备开始统计频率...</div>
+        
+        <div class="tally-container" id="tally-area"></div>
+
+        <div class="buckets-wrapper" id="bucket-area"></div>
+
+        <div class="result-area" id="result-area">结果清单：[]</div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [1, 1, 1, 2, 2, 3, 4, 4];
+        const k = 2;
+        let counts = {};
+        let buckets = [];
+        let state = 'counting'; // counting, bucketing, picking, finished
+        let countIdx = 0;
+        let bucketIdx = 0;
+        let pickIdx = 0;
+        let results = [];
+        const uniqueNums = [...new Set(nums)];
+
+        function init() {
+            const tallyArea = document.getElementById('tally-area');
+            tallyArea.innerHTML = '';
+            uniqueNums.forEach(n => {
+                const box = document.createElement('div');
+                box.className = 'tally-box';
+                box.id = `tally-${n}`;
+                box.innerHTML = `<span class="num">${n}</span><span class="count" id="count-${n}">0 次</span>`;
+                tallyArea.appendChild(box);
+            });
+
+            const bucketArea = document.getElementById('bucket-area');
+            bucketArea.innerHTML = '';
+            for (let i = 1; i <= nums.length; i++) {
+                const b = document.createElement('div');
+                b.className = 'bucket';
+                b.id = `bucket-${i}`;
+                b.setAttribute('data-freq', i);
+                bucketArea.appendChild(b);
+            }
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            
+            if (state === 'counting') {
+                if (countIdx < nums.length) {
+                    const n = nums[countIdx];
+                    counts[n] = (counts[n] || 0) + 1;
+                    document.getElementById(`count-${n}`).innerText = `${counts[n]} 次`;
+                    document.querySelectorAll('.tally-box').forEach(b => b.classList.remove('active'));
+                    document.getElementById(`tally-${n}`).classList.add('active');
+                    status.innerText = `统计中：数字 ${n} 出现了 ${counts[n]} 次`;
+                    countIdx++;
+                } else {
+                    state = 'bucketing';
+                    document.querySelectorAll('.tally-box').forEach(b => b.classList.remove('active'));
+                    status.innerText = `统计完成！现在把数字按频率放入桶中。`;
+                }
+            } 
+            else if (state === 'bucketing') {
+                if (bucketIdx < uniqueNums.length) {
+                    const n = uniqueNums[bucketIdx];
+                    const freq = counts[n];
+                    const b = document.getElementById(`bucket-${freq}`);
+                    b.classList.add('highlight');
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.id = `item-${n}`;
+                    item.innerText = n;
+                    b.appendChild(item);
+                    status.innerText = `放桶：数字 ${n} 频率为 ${freq}，放入 ${freq} 号桶。`;
+                    bucketIdx++;
+                } else {
+                    state = 'picking';
+                    pickIdx = nums.length;
+                    status.innerText = `分桶完成！从最高频（右侧）开始拿取前 ${k} 个。`;
+                }
+            }
+            else if (state === 'picking') {
+                document.querySelectorAll('.bucket').forEach(b => b.classList.remove('current'));
+                if (pickIdx > 0 && results.length < k) {
+                    const b = document.getElementById(`bucket-${pickIdx}`);
+                    if (b && b.children.length > 0) {
+                        b.classList.add('current');
+                        const item = b.lastElementChild;
+                        if (!item.classList.contains('picked')) {
+                            item.classList.add('picked');
+                            results.push(item.innerText);
+                            document.getElementById('result-area').innerText = `结果清单：[${results.join(', ')}]`;
+                            status.innerText = `从 ${pickIdx} 号桶拿走数字 ${item.innerText}。`;
+                            if (results.length === k) {
+                                state = 'finished';
+                                status.innerText = `大功告成！前 ${k} 个最高频数字已找齐。`;
+                                document.getElementById('next-btn').disabled = true;
+                            }
+                        } else {
+                            // Already picked items in this bucket? This case shouldn't happen with the logic above
+                            pickIdx--;
+                        }
+                    } else {
+                        pickIdx--;
+                        nextStep(); // Skip empty buckets
+                    }
+                }
+            }
+            render();
+        }
+
+        function render() {} // Handled in transitions for simplicity
+
+        function reset() {
+            counts = {}; state = 'counting'; countIdx = 0; bucketIdx = 0; pickIdx = 0; results = [];
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('result-area').innerText = `结果清单：[]`;
+            document.getElementById('status').innerText = `准备开始统计频率...`;
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

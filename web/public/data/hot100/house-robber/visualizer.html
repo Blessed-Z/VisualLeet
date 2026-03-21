@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .street {
+            display: flex; gap: 20px; width: 100%; height: 300px; background: var(--box-bg);
+            border: 2px solid #475569; border-radius: 20px; padding: 40px; align-items: flex-end; justify-content: center;
+        }
+
+        .house {
+            width: 80px; background: #334155; border: 2px solid #475569; border-radius: 10px 10px 0 0;
+            position: relative; transition: all 0.5s; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .house.robbed { background: rgba(16, 185, 129, 0.2); border-color: var(--emerald); transform: translateY(-10px); }
+        .house.skipped { background: rgba(236, 72, 153, 0.1); border-color: var(--rose); opacity: 0.6; }
+        .house.current { border-color: var(--amber); box-shadow: 0 0 15px var(--amber); }
+        
+        .house .money { font-weight: bold; font-size: 1.2rem; margin-top: -40px; }
+        .house .dp-val { position: absolute; bottom: -45px; font-weight: bold; color: var(--purple); font-size: 0.9rem; }
+        .house .idx { position: absolute; bottom: -25px; font-size: 0.7rem; color: #64748b; }
+
+        .legend { display: flex; gap: 20px; font-size: 0.8rem; color: #94a3b8; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 20px; }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">小怪兽准备出发！寻宝开始。</div>
+        
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: var(--emerald);"></div> 决定偷取</div>
+            <div class="legend-item"><div class="dot" style="background: var(--rose);"></div> 决定跳过</div>
+            <div class="legend-item"><div class="dot" style="background: var(--purple);"></div> 当前最高金额</div>
+        </div>
+
+        <div class="street" id="street"></div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">走一间</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [2, 7, 9, 3, 1];
+        let step = 0;
+        let dp = [0, nums[0]];
+        let actions = []; // 'rob' or 'skip'
+
+        function init() {
+            const street = document.getElementById('street');
+            street.innerHTML = '';
+            nums.forEach((n, i) => {
+                const h = document.createElement('div');
+                h.className = 'house';
+                h.id = `house-${i}`;
+                h.style.height = `${n * 15 + 60}px`;
+                h.innerHTML = `
+                    <span class="money">💰${n}</span>
+                    <span class="dp-val" id="dp-${i}">?</span>
+                    <span class="idx">房子${i+1}</span>
+                `;
+                street.appendChild(h);
+            });
+            document.getElementById('dp-0').innerText = nums[0];
+        }
+
+        function nextStep() {
+            if (step >= nums.length) return;
+            const status = document.getElementById('status');
+            
+            document.querySelectorAll('.house').forEach(h => h.classList.remove('current'));
+            const curHouse = document.getElementById(`house-${step}`);
+            curHouse.classList.add('current');
+
+            if (step === 0) {
+                status.innerText = `第一间房：只有它能选，带走 💰${nums[0]}！`;
+                curHouse.classList.add('robbed');
+                document.getElementById('dp-0').innerText = nums[0];
+                actions[0] = 'rob';
+            } else if (step === 1) {
+                if (nums[1] > nums[0]) {
+                    status.innerText = `第二间 💰${nums[1]} 比第一间钱多，跳过第一间，改偷这间！`;
+                    document.getElementById('house-0').classList.replace('robbed', 'skipped');
+                    curHouse.classList.add('robbed');
+                    dp[2] = nums[1];
+                    actions[1] = 'rob';
+                } else {
+                    status.innerText = `第二间 💰${nums[1]} 没第一间多，为了不报警，跳过这间。`;
+                    curHouse.classList.add('skipped');
+                    dp[2] = nums[0];
+                    actions[1] = 'skip';
+                }
+                document.getElementById('dp-1').innerText = dp[2];
+            } else {
+                const optA = dp[step]; // 不偷这间
+                const optB = dp[step-1] + nums[step]; // 偷这间
+                
+                if (optB > optA) {
+                    status.innerText = `抉择：偷这间 (💰${nums[step]} + 之前积攒) 比跳过它更划算！`;
+                    curHouse.classList.add('robbed');
+                    dp[step+1] = optB;
+                } else {
+                    status.innerText = `抉择：跳过这间更划算。`;
+                    curHouse.classList.add('skipped');
+                    dp[step+1] = optA;
+                }
+                document.getElementById(`dp-${step}`).innerText = dp[step+1];
+            }
+
+            step++;
+            if (step === nums.length) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerText = `冒险结束！最后最高总额：💰${dp[nums.length]}`;
+            }
+        }
+
+        function reset() {
+            step = 0; dp = [0, nums[0]]; actions = [];
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "小怪兽准备出发！寻宝开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

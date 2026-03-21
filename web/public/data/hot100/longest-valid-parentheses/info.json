@@ -1,0 +1,18 @@
+{
+  "id": 32,
+  "title": "32. 最长有效括号",
+  "difficulty": "Hard",
+  "description": "给你一个只包含 '(' 和 ')' 的字符串，找出最长有效（格式正确且连续）括号子串的长度。",
+  "category": "栈",
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(n)"
+  },
+  "solutions": [
+    {
+      "id": "stack",
+      "name": "栈模拟",
+      "description": "使用栈记录括号的下标。栈底始终维护一个“最近一个未匹配的右括号”的下标，作为计算长度的基准。"
+    }
+  ]
+}

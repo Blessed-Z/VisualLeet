@@ -1,0 +1,18 @@
+{
+  "id": 322,
+  "title": "322. 零钱兑换",
+  "difficulty": "Medium",
+  "description": "给你一个整数数组 coins ，表示不同面额的硬币；以及一个整数 amount ，表示总金额。计算并返回可以凑成总金额所需的最少硬币个数 。如果没有任何一种硬币组合能组成总金额，返回 -1 。",
+  "category": "动态规划",
+  "complexity": {
+    "time": "O(amount * n)",
+    "space": "O(amount)"
+  },
+  "solutions": [
+    {
+      "id": "dp",
+      "name": "动态规划（完全背包）",
+      "description": "定义 dp[i] 为凑齐金额 i 所需的最少硬币数。对于每种硬币，尝试更新所有大于该面额的 dp 状态。"
+    }
+  ]
+}

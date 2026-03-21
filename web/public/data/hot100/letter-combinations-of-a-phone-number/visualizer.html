@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>17. 电话组合 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 350px 1fr; gap: 30px; min-height: 500px; }
+
+        /* Keypad Styles */
+        .phone-case {
+            background: #1c2128; border: 8px solid #30363d; border-radius: 40px;
+            padding: 30px 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+        }
+        .phone-screen {
+            width: 100%; height: 60px; background: #0d1117; border-radius: 10px;
+            border: 2px solid #30363d; display: flex; align-items: center;
+            justify-content: center; font-size: 1.8em; font-family: monospace; color: var(--amber);
+        }
+        .keypad {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%;
+        }
+        .key {
+            height: 70px; background: #161b22; border: 2px solid #30363d;
+            border-radius: 15px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: default;
+            transition: all 0.3s;
+        }
+        .key .num { font-size: 1.2em; font-weight: bold; }
+        .key .letters { font-size: 0.7em; color: #8b949e; letter-spacing: 2px; }
+        .key.active {
+            border-color: var(--primary-purple); background: rgba(157, 78, 221, 0.2);
+            box-shadow: 0 0 20px var(--primary-purple); transform: scale(1.05);
+        }
+        .key.highlight {
+            border-color: var(--amber); background: rgba(255, 190, 11, 0.2);
+            box-shadow: 0 0 20px var(--amber);
+        }
+
+        /* Tree Area */
+        .tree-area {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            position: relative; overflow: visible; padding: 20px;
+        }
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.4s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; }
+        .node.active circle { stroke: var(--amber); stroke-width: 4; }
+        .node.in-path circle { stroke: var(--primary-purple); }
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.4s; }
+        .link.active { stroke: var(--primary-purple); stroke-width: 3; }
+
+        .res-list {
+            position: absolute; bottom: 20px; right: 20px; width: 200px;
+            max-height: 200px; overflow-y: auto; background: rgba(13, 17, 23, 0.8);
+            border: 1px solid #30363d; border-radius: 12px; padding: 10px;
+            font-family: monospace; font-size: 0.85em;
+        }
+        .res-item { color: var(--emerald-green); margin-bottom: 4px; border-bottom: 1px solid #30363d; padding-bottom: 2px; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>☎️ 电话组合：暗号解码</h1>
+        <div class="status-box">
+            <div id="status">输入数字暗号: <span style="color:var(--amber); font-weight:bold;">"23"</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始解码。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="phone-case">
+                <div class="phone-screen" id="screen">2 3</div>
+                <div class="keypad">
+                    <div class="key" id="key-1"><div class="num">1</div><div class="letters">&nbsp;</div></div>
+                    <div class="key" id="key-2"><div class="num">2</div><div class="letters">ABC</div></div>
+                    <div class="key" id="key-3"><div class="num">3</div><div class="letters">DEF</div></div>
+                    <div class="key" id="key-4"><div class="num">4</div><div class="letters">GHI</div></div>
+                    <div class="key" id="key-5"><div class="num">5</div><div class="letters">JKL</div></div>
+                    <div class="key" id="key-6"><div class="num">6</div><div class="letters">MNO</div></div>
+                    <div class="key" id="key-7"><div class="num">7</div><div class="letters">PQRS</div></div>
+                    <div class="key" id="key-8"><div class="num">8</div><div class="letters">TUV</div></div>
+                    <div class="key" id="key-9"><div class="num">9</div><div class="letters">WXYZ</div></div>
+                    <div class="key"><div class="num">*</div></div>
+                    <div class="key"><div class="num">0</div></div>
+                    <div class="key"><div class="num">#</div></div>
+                </div>
+            </div>
+
+            <div class="tree-area" id="viz">
+                <svg id="tree-svg"></svg>
+                <div class="res-list" id="res-list">
+                    <div style="font-weight:bold; color:#8b949e; margin-bottom:8px; font-size:0.8em;">解码结果:</div>
+                    <div id="res-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const digits = "23";
+        const mapping = ["", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"];
+        let steps = [];
+        let currentStep = 0;
+
+        function solve() {
+            const res = [];
+            const path = [];
+            const treeNodes = [{ id: 'root', val: 'START', depth: -1, parentId: null }];
+            
+            function dfs(i, parentId) {
+                if (i === digits.length) {
+                    res.push(path.join(''));
+                    steps.push({ type: 'FOUND', path: path.join(''), res: [...res], activeNode: parentId, currentDigit: null });
+                    return;
+                }
+
+                const d = digits[i];
+                const letters = mapping[parseInt(d)];
+                
+                for (let char of letters) {
+                    const nodeId = `d${i}-${char}-${Math.random()}`;
+                    treeNodes.push({ id: nodeId, val: char, depth: i, parentId });
+                    
+                    path.push(char);
+                    steps.push({ type: 'ENTER', char, path: path.join(''), res: [...res], activeNode: nodeId, currentDigit: d });
+                    
+                    dfs(i + 1, nodeId);
+                    
+                    path.pop();
+                    steps.push({ type: 'BACK', path: path.join(''), res: [...res], activeNode: parentId, currentDigit: d });
+                }
+            }
+            dfs(0, 'root');
+            return treeNodes;
+        }
+
+        const treeNodes = solve();
+        const svg = document.getElementById('tree-svg');
+
+        function render() {
+            svg.innerHTML = '';
+            const step = steps[currentStep];
+            
+            // Draw Keypad highlights
+            document.querySelectorAll('.key').forEach(k => k.classList.remove('active', 'highlight'));
+            if (step.currentDigit) {
+                document.getElementById(`key-${step.currentDigit}`).classList.add('highlight');
+            }
+
+            // Simple vertical tree layout
+            const coords = new Map();
+            const levelCounts = {};
+            treeNodes.forEach(n => {
+                const depth = n.depth + 1;
+                levelCounts[depth] = (levelCounts[depth] || 0) + 1;
+                const x = (levelCounts[depth] - 1) * 100 - 150;
+                const y = depth * 100;
+                coords.set(n.id, { x, y });
+            });
+
+            // Draw Links
+            treeNodes.forEach(n => {
+                if (n.parentId && coords.has(n.parentId)) {
+                    // Only draw if target has been visited
+                    const nodeIdx = steps.findIndex(s => s.activeNode === n.id);
+                    if (nodeIdx !== -1 && nodeIdx <= currentStep) {
+                        const s = coords.get(n.parentId);
+                        const t = coords.get(n.id);
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', s.x); line.setAttribute('y1', s.y);
+                        line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+                        line.setAttribute('class', 'link');
+                        svg.appendChild(line);
+                    }
+                }
+            });
+
+            // Draw Nodes
+            treeNodes.forEach(n => {
+                const nodeIdx = steps.findIndex(s => s.activeNode === n.id);
+                if (nodeIdx !== -1 && nodeIdx <= currentStep) {
+                    const pos = coords.get(n.id);
+                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    let cls = 'node';
+                    if (step.activeNode === n.id) cls += ' active';
+                    g.setAttribute('class', cls);
+                    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    c.setAttribute('cx', pos.x); c.setAttribute('cy', pos.y); c.setAttribute('r', 20);
+                    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    t.setAttribute('x', pos.x); t.setAttribute('y', pos.y); t.textContent = n.val;
+                    g.appendChild(c); g.appendChild(t);
+                    svg.appendChild(g);
+                }
+            });
+
+            svg.setAttribute('viewBox', `-300 0 600 500`);
+
+            // Sync Results
+            const resBox = document.getElementById('res-container');
+            resBox.innerHTML = '';
+            step.res.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'res-item';
+                div.innerText = r;
+                resBox.appendChild(div);
+            });
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                const step = steps[currentStep];
+                const status = document.getElementById('status');
+                if (step.type === 'ENTER') status.innerHTML = `按下数字 <span class="highlight-text">${step.currentDigit}</span>，选择字母 <span class="highlight-text">'${step.char}'</span>`;
+                else if (step.type === 'FOUND') status.innerHTML = `✨ <b>解码成功！</b> 得到组合 <span class="highlight-text">"${step.path}"</span>`;
+                else status.innerHTML = `回溯：撤销 '${step.path[step.path.length-1] || ""}'，回到上一个按键。`;
+                render();
+            } else {
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+        window.onload = render;
+    </script>
+</body>
+</html>

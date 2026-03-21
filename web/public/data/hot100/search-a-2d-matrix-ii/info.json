@@ -1,0 +1,18 @@
+{
+  "id": 240,
+  "slug": "search-a-2d-matrix-ii",
+  "title": "搜索二维矩阵 II",
+  "difficulty": "Medium",
+  "category": "矩阵",
+  "tags": ["Array", "Binary Search", "Divide and Conquer", "Matrix"],
+  "description": "编写一个高效的算法来搜索 m x n 矩阵 matrix 中的一个目标值 target 。该矩阵具有以下特性：每行的元素从左到右升序排列；每列的元素从上到下升序排列。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "Z字形查找",
+      "time": "O(M + N)",
+      "space": "O(1)"
+    }
+  ]
+}

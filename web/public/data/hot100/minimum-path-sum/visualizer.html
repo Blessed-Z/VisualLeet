@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>64. 最小路径和 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 900px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .grid-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 6px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: #1c2128;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .cell .grid-val { font-size: 10px; color: #8b949e; position: absolute; top: 4px; left: 4px; }
+        .cell .dp-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+
+        .cell.active { border: 2px solid var(--amber-yellow); transform: scale(1.1); z-index: 10; }
+        .cell.checking { border-color: var(--emerald-green); background: rgba(16, 185, 129, 0.1); }
+        .cell.done { background: rgba(16, 185, 129, 0.2); }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .formula {
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>64. 最小路径和 (Min Path Sum)</h2>
+    
+    <div class="grid-container">
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始，初始化起点</div>
+
+    <div class="formula" id="formula">
+        dp[i][j] = min(dp[i-1][j], dp[i][j-1]) + grid[i][j]
+    </div>
+
+    <div class="controls" style="margin-top: 20px;">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const gridData = [
+        [1, 3, 1],
+        [1, 5, 1],
+        [4, 2, 1]
+    ];
+    const M = gridData.length;
+    const N = gridData[0].length;
+    let dp = Array.from({ length: M }, () => Array(N).fill(0));
+    let r = 0, c = 0;
+
+    function init() {
+        const grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${N}, 60px)`;
+        grid.innerHTML = '';
+        
+        for (let i = 0; i < M; i++) {
+            for (let j = 0; j < N; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${i}-${j}`;
+                
+                const gridVal = document.createElement('span');
+                gridVal.className = 'grid-val';
+                gridVal.textContent = gridData[i][j];
+                
+                const dpVal = document.createElement('span');
+                dpVal.className = 'dp-val';
+                dpVal.id = `dp-val-${i}-${j}`;
+                dpVal.textContent = '';
+                
+                cell.appendChild(gridVal);
+                cell.appendChild(dpVal);
+                grid.appendChild(cell);
+            }
+        }
+
+        dp = Array.from({ length: M }, () => Array(N).fill(0));
+        r = 0; c = 0;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '点击下一步，初始化起点 (0, 0)';
+        document.getElementById('formula').textContent = 'dp[0][0] = grid[0][0]';
+    }
+
+    function updateView() {
+        document.querySelectorAll('.cell').forEach(cell => cell.classList.remove('active', 'checking'));
+        
+        const currentCell = document.getElementById(`cell-${r}-${c}`);
+        currentCell.classList.add('active');
+        
+        const status = document.getElementById('status');
+        const formula = document.getElementById('formula');
+
+        if (r === 0 && c === 0) {
+            dp[0][0] = gridData[0][0];
+            document.getElementById(`dp-val-0-0`).textContent = dp[0][0];
+            status.textContent = `起点 (0,0): 路径和就是格子本身的值 ${gridData[0][0]}`;
+        } else if (r === 0) {
+            // First row
+            dp[0][c] = dp[0][c-1] + gridData[0][c];
+            document.getElementById(`dp-val-0-${c}`).textContent = dp[0][c];
+            document.getElementById(`cell-0-${c-1}`).classList.add('checking');
+            status.textContent = `第一行 (${r},${c}): 只能从左边过来。${dp[0][c-1]} + ${gridData[0][c]} = ${dp[0][c]}`;
+            formula.textContent = `dp[0][${c}] = dp[0][${c-1}] + grid[0][${c}]`;
+        } else if (c === 0) {
+            // First col
+            dp[r][0] = dp[r-1][0] + gridData[r][0];
+            document.getElementById(`dp-val-${r}-0`).textContent = dp[r][0];
+            document.getElementById(`cell-${r-1}-0`).classList.add('checking');
+            status.textContent = `第一列 (${r},${c}): 只能从上面过来。${dp[r-1][0]} + ${gridData[r][0]} = ${dp[r][0]}`;
+            formula.textContent = `dp[${r}][0] = dp[${r-1}][0] + grid[${r}][0]`;
+        } else {
+            // Middle
+            const fromUp = dp[r-1][c];
+            const fromLeft = dp[r][c-1];
+            const chosen = Math.min(fromUp, fromLeft);
+            dp[r][c] = chosen + gridData[r][c];
+            
+            document.getElementById(`dp-val-${r}-${c}`).textContent = dp[r][c];
+            document.getElementById(`cell-${r-1}-${c}`).classList.add('checking');
+            document.getElementById(`cell-${r}-${c-1}`).classList.add('checking');
+            
+            status.textContent = `计算 (${r},${c}): min(上:${fromUp}, 左:${fromLeft}) + 格子:${gridData[r][c]} = ${dp[r][c]}`;
+            formula.textContent = `dp[${r}][${c}] = min(${fromUp}, ${fromLeft}) + ${gridData[r][c]}`;
+        }
+        currentCell.classList.add('done');
+    }
+
+    function next() {
+        updateView();
+        
+        c++;
+        if (c >= N) {
+            c = 0;
+            r++;
+        }
+        
+        if (r >= M) {
+            document.getElementById('nextBtn').disabled = true;
+            document.getElementById('status').textContent = `遍历结束！最终最小路径和为: ${dp[M-1][N-1]}`;
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

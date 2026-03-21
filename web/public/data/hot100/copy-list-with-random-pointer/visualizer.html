@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>138. 复制带随机指针的链表 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            text-align: center;
+        }
+
+        .status-box {
+            background-color: var(--node-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary-purple);
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+        }
+
+        .visualization-area {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 40px;
+        }
+
+        .list-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            position: relative;
+            min-height: 100px;
+        }
+
+        .node-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .node {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--node-bg);
+            border: 3px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.5s ease;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .node.active {
+            border-color: var(--amber);
+            transform: scale(1.15);
+            box-shadow: 0 0 15px var(--amber);
+        }
+
+        .node.cloned {
+            border-color: var(--primary-purple);
+        }
+
+        .node-label {
+            position: absolute;
+            top: -25px;
+            font-size: 0.8em;
+            color: #8b949e;
+        }
+
+        .arrow {
+            position: absolute;
+            height: 2px;
+            background-color: #30363d;
+            transition: all 0.5s ease;
+            z-index: 1;
+        }
+
+        .arrow.next {
+            width: 40px;
+            right: -40px;
+            top: 50%;
+        }
+
+        .arrow-head {
+            position: absolute;
+            right: 0;
+            top: -4px;
+            border-left: 6px solid #30363d;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 25px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+
+        .btn-next {
+            background-color: var(--emerald-green);
+            color: #000;
+        }
+
+        .btn-reset {
+            background-color: #30363d;
+            color: var(--text-color);
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .svg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .random-path {
+            stroke-dasharray: 5;
+            transition: all 0.8s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🪞 复制带随机指针的链表</h1>
+        <div class="status-box" id="status">
+            点击“下一步”开始魔法复制之旅！
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <svg class="svg-overlay" id="svg-layer"></svg>
+            
+            <!-- 原链表 -->
+            <div class="list-row" id="original-list">
+                <!-- 动态生成 -->
+            </div>
+
+            <!-- 新链表 (初始隐藏) -->
+            <div class="list-row" id="cloned-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nodesData = [
+            { val: 7, random: null },
+            { val: 13, random: 0 },
+            { val: 11, random: 4 },
+            { val: 10, random: 2 },
+            { val: 1, random: 0 }
+        ];
+
+        let step = 0;
+        let curIdx = 0;
+        let originalNodes = [];
+        let clonedNodes = [];
+
+        function init() {
+            const originalList = document.getElementById('original-list');
+            const clonedList = document.getElementById('cloned-list');
+            originalList.innerHTML = '';
+            clonedList.innerHTML = '';
+            originalNodes = [];
+            clonedNodes = [];
+            step = 0;
+            curIdx = 0;
+            document.getElementById('status').innerText = '点击“下一步”开始魔法复制之旅！';
+            document.getElementById('next-btn').disabled = false;
+
+            nodesData.forEach((data, i) => {
+                const container = document.createElement('div');
+                container.className = 'node-container';
+                
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.innerText = data.val;
+                
+                const label = document.createElement('div');
+                label.className = 'node-label';
+                label.innerText = i === 0 ? 'head' : '';
+                
+                container.appendChild(label);
+                container.appendChild(node);
+                
+                if (i < nodesData.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow next';
+                    const head = document.createElement('div');
+                    head.className = 'arrow-head';
+                    arrow.appendChild(head);
+                    node.appendChild(arrow);
+                }
+                
+                originalList.appendChild(container);
+                originalNodes.push(node);
+            });
+
+            drawRandomPointers('original', originalNodes, nodesData);
+        }
+
+        function drawRandomPointers(type, nodes, data) {
+            const svg = document.getElementById('svg-layer');
+            const paths = svg.querySelectorAll(`.${type}-random`);
+            paths.forEach(p => p.remove());
+
+            data.forEach((d, i) => {
+                if (d.random !== null) {
+                    const from = nodes[i];
+                    const to = nodes[d.random];
+                    if (from && to) {
+                        createCurve(from, to, type === 'cloned' ? '#9d4edd' : '#ff006e', `${type}-random`);
+                    }
+                }
+            });
+        }
+
+        function createCurve(from, to, color, className) {
+            const svg = document.getElementById('svg-layer');
+            const rect1 = from.getBoundingClientRect();
+            const rect2 = to.getBoundingClientRect();
+            const svgRect = svg.getBoundingClientRect();
+
+            const x1 = rect1.left + rect1.width / 2 - svgRect.left;
+            const y1 = rect1.top + rect1.height / 2 - svgRect.top;
+            const x2 = rect2.left + rect2.width / 2 - svgRect.left;
+            const y2 = rect2.top + rect2.height / 2 - svgRect.top;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const midX = (x1 + x2) / 2;
+            const bend = Math.abs(x1 - x2) * 0.2 + 30;
+            const d = `M ${x1} ${y1} Q ${midX} ${y1 - bend} ${x2} ${y2}`;
+            
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', color);
+            path.setAttribute('fill', 'transparent');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('class', `random-path ${className}`);
+            path.setAttribute('marker-end', `url(#arrowhead-${color.replace('#','')})`);
+            
+            // Add marker if not exists
+            if (!document.getElementById(`arrowhead-${color.replace('#','')}`)) {
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', `arrowhead-${color.replace('#','')}`);
+                marker.setAttribute('viewBox', '0 0 10 10');
+                marker.setAttribute('refX', '8');
+                marker.setAttribute('refY', '5');
+                marker.setAttribute('markerWidth', '6');
+                marker.setAttribute('markerHeight', '6');
+                marker.setAttribute('orient', 'auto-start-reverse');
+                const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                p.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+                p.setAttribute('fill', color);
+                marker.appendChild(p);
+                defs.appendChild(marker);
+                svg.appendChild(defs);
+            }
+
+            svg.appendChild(path);
+        }
+
+        function nextStep() {
+            if (step === 0) {
+                // 第一遍遍历开始
+                document.getElementById('status').innerText = '第一遍遍历：在哈希表中创建所有节点的“替身”';
+                step = 1;
+                curIdx = 0;
+            } else if (step === 1) {
+                // 创建克隆节点
+                if (curIdx < nodesData.length) {
+                    originalNodes.forEach(n => n.classList.remove('active'));
+                    originalNodes[curIdx].classList.add('active');
+                    
+                    const container = document.createElement('div');
+                    container.className = 'node-container';
+                    const node = document.createElement('div');
+                    node.className = 'node cloned';
+                    node.innerText = nodesData[curIdx].val;
+                    container.appendChild(node);
+                    document.getElementById('cloned-list').appendChild(container);
+                    clonedNodes.push(node);
+                    
+                    document.getElementById('status').innerText = `为原节点 ${nodesData[curIdx].val} 创建一个新节点替身。`;
+                    curIdx++;
+                } else {
+                    step = 2;
+                    curIdx = 0;
+                    originalNodes.forEach(n => n.classList.remove('active'));
+                    document.getElementById('status').innerText = '第二遍遍历：开始连接新节点的 next 和 random 线。';
+                }
+            } else if (step === 2) {
+                // 连接线
+                if (curIdx < nodesData.length) {
+                    originalNodes.forEach(n => n.classList.remove('active'));
+                    clonedNodes.forEach(n => n.classList.remove('active'));
+                    originalNodes[curIdx].classList.add('active');
+                    clonedNodes[curIdx].classList.add('active');
+                    
+                    document.getElementById('status').innerText = `正在连接替身 ${nodesData[curIdx].val} 的 next 和 random 线...`;
+                    
+                    // Add next arrow if not last
+                    if (curIdx < nodesData.length - 1) {
+                         const arrow = document.createElement('div');
+                         arrow.className = 'arrow next';
+                         arrow.style.backgroundColor = '#9d4edd';
+                         const head = document.createElement('div');
+                         head.className = 'arrow-head';
+                         head.style.borderLeftColor = '#9d4edd';
+                         arrow.appendChild(head);
+                         clonedNodes[curIdx].appendChild(arrow);
+                    }
+                    
+                    // Add random pointer
+                    if (nodesData[curIdx].random !== null) {
+                        const from = clonedNodes[curIdx];
+                        const to = clonedNodes[nodesData[curIdx].random];
+                        createCurve(from, to, '#9d4edd', 'cloned-random');
+                    }
+                    
+                    curIdx++;
+                } else {
+                    document.getElementById('status').innerText = '✨ 完美克隆！任务完成。';
+                    document.getElementById('next-btn').disabled = true;
+                    originalNodes.forEach(n => n.classList.remove('active'));
+                    clonedNodes.forEach(n => n.classList.remove('active'));
+                }
+            }
+        }
+
+        function reset() {
+            init();
+            const svg = document.getElementById('svg-layer');
+            svg.innerHTML = '';
+            init();
+        }
+
+        window.onload = init;
+        window.onresize = reset;
+    </script>
+</body>
+</html>

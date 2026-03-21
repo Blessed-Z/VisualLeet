@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: transparent; margin: 0; padding: 20px; color: #fff; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .array-container { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .box { width: 60px; height: 60px; border: 2px solid #4a5568; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; background: rgba(45, 55, 72, 0.8); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; }
+        .box .val { font-size: 1.2rem; font-weight: bold; }
+        .box .idx { font-size: 0.7rem; color: #718096; position: absolute; bottom: 2px; }
+        .highlight { border-color: #ecc94b; background: rgba(236, 201, 75, 0.2); transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .target-match { border-color: #48bb78; background: rgba(72, 187, 120, 0.2); }
+        .hash-table { background: rgba(26, 32, 44, 0.8); padding: 15px; border-radius: 12px; border: 1px solid #4a5568; min-width: 200px; }
+        .hash-item { font-size: 0.9rem; margin: 4px 0; color: #cbd5e0; }
+        .controls { display: flex; gap: 10px; margin-top: 20px; }
+        button { padding: 8px 16px; border-radius: 8px; border: none; background: #4a5568; color: white; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #718096; }
+        #status { font-size: 0.9rem; color: #a0aec0; height: 24px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="status">点击“下一步”开始分析</div>
+        <div class="array-container" id="array"></div>
+        <div class="hash-table">
+            <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.8rem; color: #718096;">HASH MAP (Target: 9)</div>
+            <div id="hash-content"></div>
+        </div>
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+    <script>
+        const nums = [2, 7, 11, 15];
+        const target = 9;
+        let step = 0;
+        const hashMap = {};
+
+        function init() {
+            const arrayDiv = document.getElementById('array');
+            arrayDiv.innerHTML = '';
+            nums.forEach((n, i) => {
+                const el = document.createElement('div');
+                el.className = 'box';
+                el.id = `box-${i}`;
+                el.innerHTML = `<span class="val">${n}</span><span class="idx">${i}</span>`;
+                arrayDiv.appendChild(el);
+            });
+            document.getElementById('hash-content').innerHTML = '<div class="hash-item">{}</div>';
+        }
+
+        function nextStep() {
+            if (step >= nums.length) return;
+            
+            const num = nums[step];
+            const complement = target - num;
+            const status = document.getElementById('status');
+            
+            // Highlight current
+            document.querySelectorAll('.box').forEach(b => b.classList.remove('highlight'));
+            const currentBox = document.getElementById(`box-${step}`);
+            currentBox.classList.add('highlight');
+
+            if (complement in hashMap) {
+                status.innerText = `找到配对！${target} - ${num} = ${complement}，在哈希表中。`;
+                currentBox.classList.add('target-match');
+                document.getElementById(`box-${hashMap[complement]}`).classList.add('target-match');
+                document.getElementById('next-btn').disabled = true;
+            } else {
+                status.innerText = `未找到 ${complement}，将 ${num} 存入哈希表。`;
+                hashMap[num] = step;
+                updateHash();
+                step++;
+            }
+        }
+
+        function updateHash() {
+            const content = document.getElementById('hash-content');
+            content.innerHTML = Object.entries(hashMap)
+                .map(([k, v]) => `<div class="hash-item">${k} : index ${v}</div>`)
+                .join('');
+        }
+
+        function reset() {
+            step = 0;
+            for(let key in hashMap) delete hashMap[key];
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = '点击“下一步”开始分析';
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

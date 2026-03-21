@@ -1,0 +1,18 @@
+{
+  "id": 101,
+  "title": "对称二叉树",
+  "slug": "symmetric-tree",
+  "difficulty": "Easy",
+  "category": "二叉树",
+  "tags": ["Tree", "Depth-First Search", "Breadth-First Search", "Binary Tree"],
+  "description": "给定一个二叉树，检查它是否是镜像对称的。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "双指针递归检查",
+      "time": "O(n)",
+      "space": "O(n)"
+    }
+  ]
+}

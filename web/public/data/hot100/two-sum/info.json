@@ -1,0 +1,24 @@
+{
+  "id": 1,
+  "title": "两数之和",
+  "slug": "two-sum",
+  "link": "https://leetcode.cn/problems/two-sum/",
+  "difficulty": "Easy",
+  "description": "给定一个整数数组 nums 和一个整数目标值 target，请你在该数组中找出和为目标值 target 的那两个整数，并返回它们的数组下标。",
+  "solutions": [
+    {
+      "name": "哈希表 (最优)",
+      "file": "hash-map.py",
+      "time": "O(N)",
+      "space": "O(N)",
+      "is_optimal": true
+    },
+    {
+      "name": "暴力枚举",
+      "file": "brute-force.py",
+      "time": "O(N^2)",
+      "space": "O(1)",
+      "is_optimal": false
+    }
+  ]
+}

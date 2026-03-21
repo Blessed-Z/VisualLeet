@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --primary-amber: #fbbf24;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 85px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .matrix-area { position: relative; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 24px; }
+        .matrix { display: grid; gap: 10px; }
+        .cell { 
+            width: 55px; height: 55px; border: 1.5px solid #333; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; font-weight: bold; background: #111;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        /* 旋转组颜色区分 */
+        .group-0 { border-color: var(--primary-violet); }
+        .group-1 { border-color: var(--primary-amber); }
+        .group-2 { border-color: var(--primary-rose); }
+        .group-3 { border-color: var(--primary-emerald); }
+
+        .cell.active { transform: scale(1.1); box-shadow: 0 0 20px currentColor; z-index: 10; border-width: 2px; }
+        .cell.swapping { transform: rotate(90deg) scale(0.9); opacity: 0.5; }
+        .cell.done { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.4); }
+
+        .controls { display: flex; gap: 16px; margin-top: 10px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:active { transform: scale(0.95); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .scan-overlay {
+            position: absolute; border: 2px solid var(--primary-violet); border-radius: 16px;
+            background: rgba(167, 139, 250, 0.05); pointer-events: none; transition: all 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！要把矩阵顺时针旋转 90 度。</div>
+        </div>
+
+        <div class="matrix-area" id="matrix-area">
+            <div class="scan-overlay" id="scan-zone"></div>
+            <div class="matrix" id="matrix"></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const n = 4;
+        let matrix = [
+            [1, 2, 3, 4],
+            [5, 6, 7, 8],
+            [9, 10, 11, 12],
+            [13, 14, 15, 16]
+        ];
+        
+        let i = 0, j = 0;
+        let phase = 'INIT'; // 'INIT', 'SELECT', 'SWAP'
+
+        function init() {
+            const container = document.getElementById('matrix');
+            container.style.gridTemplateColumns = `repeat(${n}, 55px)`;
+            renderMatrix();
+            updateScanZone();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function renderMatrix() {
+            const container = document.getElementById('matrix');
+            container.innerHTML = '';
+            for(let r=0; r<n; r++) {
+                for(let c=0; c<n; c++) {
+                    const div = document.createElement('div');
+                    div.className = 'cell';
+                    div.id = `cell-${r}-${c}`;
+                    div.innerText = matrix[r][c];
+                    container.appendChild(div);
+                }
+            }
+        }
+
+        function updateScanZone() {
+            const zone = document.getElementById('scan-zone');
+            const cellW = 55 + 10;
+            zone.style.width = `${(n/2) * cellW}px`;
+            zone.style.height = `${(n/2) * cellW}px`;
+            zone.style.left = `20px`;
+            zone.style.top = `20px`;
+        }
+
+        async function nextStep() {
+            const status = document.getElementById('status');
+            
+            if (i >= Math.floor(n / 2)) {
+                status.innerHTML = "🎉 所有的方块都旋转完啦！大功告成。";
+                document.getElementById('next-btn').disabled = true;
+                return;
+            }
+
+            const p1 = [i, j];
+            const p2 = [j, n - 1 - i];
+            const p3 = [n - 1 - i, n - 1 - j];
+            const p4 = [n - 1 - j, i];
+            const points = [p1, p2, p3, p4];
+
+            if (phase === 'INIT' || phase === 'SWAP') {
+                // Phase: Highlight the four linked points
+                document.querySelectorAll('.cell').forEach(c => c.classList.remove('active', 'swapping'));
+                
+                points.forEach((p, idx) => {
+                    const el = document.getElementById(`cell-${p[0]}-${p[1]}`);
+                    el.classList.add('active');
+                    el.style.color = `var(--primary-${['violet','amber','rose','emerald'][idx]})`;
+                });
+
+                status.innerHTML = `选中一组联动方块：<span class="highlight">(${i},${j})</span> 牵动着其他三个位置。`;
+                phase = 'SELECT';
+            } else {
+                // Phase: Perform the swap
+                status.innerHTML = `四向大挪移！<br><span style="color:var(--primary-emerald)">${matrix[p4[0]][p4[1]]}</span> 搬到最前，其余顺次顶替。`;
+                
+                points.forEach(p => document.getElementById(`cell-${p[0]}-${p[1]}`).classList.add('swapping'));
+                
+                await new Promise(r => setTimeout(r, 500));
+
+                // The 4-way swap logic
+                const temp = matrix[i][j];
+                matrix[i][j] = matrix[n - 1 - j][i];
+                matrix[n - 1 - j][i] = matrix[n - 1 - i][n - 1 - j];
+                matrix[n - 1 - i][n - 1 - j] = matrix[j][n - 1 - i];
+                matrix[j][n - 1 - i] = temp;
+
+                renderMatrix();
+                points.forEach(p => document.getElementById(`cell-${p[0]}-${p[1]}`).classList.add('active'));
+
+                // Move to next indices
+                j++;
+                if (j >= Math.ceil(n / 2)) {
+                    j = 0;
+                    i++;
+                }
+                phase = 'SWAP';
+            }
+        }
+
+        function reset() {
+            matrix = [
+                [1, 2, 3, 4],
+                [5, 6, 7, 8],
+                [9, 10, 11, 12],
+                [13, 14, 15, 16]
+            ];
+            i = 0; j = 0; phase = 'INIT';
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

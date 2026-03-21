@@ -1,0 +1,17 @@
+{
+  "id": 438,
+  "title": "438. 找到字符串中所有字母异位词",
+  "slug": "find-all-anagrams-in-a-string",
+  "link": "https://leetcode.cn/problems/find-all-anagrams-in-a-string/",
+  "difficulty": "Medium",
+  "description": "给定两个字符串 s 和 p，找到 s 中所有 p 的 异位词 的子串，返回这些子串的起始索引。不考虑答案输出的顺序。",
+  "solutions": [
+    {
+      "name": "滑动窗口 + 哈希计数 (最优)",
+      "file": "hash-map.py",
+      "time": "O(N + M)",
+      "space": "O(K)",
+      "is_optimal": true
+    }
+  ]
+}

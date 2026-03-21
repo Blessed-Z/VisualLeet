@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>739. 每日温度 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--rose-red); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 1fr 250px; gap: 25px; min-height: 500px; }
+
+        /* Left Side: Sequence and Results */
+        .viz-panel {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 30px; position: relative; display: flex; flex-direction: column; gap: 40px;
+        }
+
+        .row-container { width: 100%; }
+        .label { font-size: 0.7em; color: #8b949e; text-transform: uppercase; margin-bottom: 10px; font-weight: bold; letter-spacing: 1px; }
+
+        .temp-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .temp-card {
+            width: 60px; height: 80px; border: 2px solid #30363d; border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: var(--node-bg); transition: all 0.4s; position: relative;
+        }
+        .temp-card.active { border-color: var(--amber); box-shadow: 0 0 15px var(--amber); transform: translateY(5px); }
+        .temp-card.resolver { border-color: var(--emerald-green); background: rgba(6, 214, 160, 0.1); }
+        .temp-card.waiting { border-color: var(--primary-purple); }
+        
+        .temp-val { font-size: 1.4em; font-weight: 800; }
+        .temp-idx { font-size: 0.6em; color: #8b949e; position: absolute; top: 5px; right: 5px; }
+
+        .ans-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .ans-cell {
+            width: 60px; height: 40px; border: 1px solid #30363d; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255, 255, 255, 0.02); font-weight: bold; font-family: monospace;
+            transition: all 0.3s;
+        }
+        .ans-cell.updated { border-color: var(--emerald-green); color: var(--emerald-green); background: rgba(6, 214, 160, 0.1); transform: scale(1.1); }
+
+        /* Right Side: Monotonic Stack */
+        .stack-area { display: flex; flex-direction: column; align-items: center; }
+        .stack-view {
+            width: 120px; height: 400px; border: 4px solid #30363d; border-top: none;
+            border-radius: 0 0 20px 20px; background: rgba(22, 27, 34, 0.5);
+            display: flex; flex-direction: column-reverse; align-items: center; padding: 10px;
+        }
+        .stack-item {
+            width: 100%; height: 45px; margin-bottom: 5px; border-radius: 8px;
+            background: var(--primary-purple); color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .stack-item .item-val { font-weight: bold; }
+        .stack-item .item-idx { font-size: 0.6em; opacity: 0.7; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌡️ 每日温度：寻找暖阳演示</h1>
+        <div class="status-box">
+            <div id="status">准备分析气温。气温: <span class="highlight-text">[73, 74, 75, 71, 69, 72]</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">我们将使用单调递减栈来寻找每一个“救星”。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="viz-panel" id="viz">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+
+                <div class="row-container">
+                    <div class="label">每日气温 (Temperatures)</div>
+                    <div class="temp-row" id="temp-container"></div>
+                </div>
+
+                <div class="row-container">
+                    <div class="label">等待天数 (Result / Ans)</div>
+                    <div class="ans-row" id="ans-container"></div>
+                </div>
+            </div>
+
+            <div class="stack-area">
+                <div class="label">等待区 (单调栈 - 存下标)</div>
+                <div class="stack-view" id="stack-view"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const temps = [73, 74, 75, 71, 69, 72];
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function generateSteps() {
+            steps = [];
+            let stack = []; // indices
+            let ans = new Array(temps.length).fill(0);
+            
+            steps.push({ type: 'INIT', stack: [], ans: [...ans], i: -1, ch: null });
+
+            for (let i = 0; i < temps.length; i++) {
+                const t = temps[i];
+                // Check stack
+                while (stack.length > 0 && t > temps[stack[stack.length - 1]]) {
+                    const prevIdx = stack.pop();
+                    const diff = i - prevIdx;
+                    ans[prevIdx] = diff;
+                    steps.push({ 
+                        type: 'RESOLVE', i, t, prevIdx, 
+                        prevVal: temps[prevIdx], diff, 
+                        stack: [...stack], 
+                        ans: [...ans],
+                        popping: prevIdx 
+                    });
+                }
+                stack.push(i);
+                steps.push({ type: 'PUSH', i, t, stack: [...stack], ans: [...ans] });
+            }
+            steps.push({ type: 'DONE', stack: [...stack], ans: [...ans], i: -1 });
+        }
+
+        function render() {
+            const step = steps[currentStep];
+            if (!step) return;
+
+            document.getElementById('viz').style.transform = `scale(${zoomFactor})`;
+
+            // Render Temps
+            const tempContainer = document.getElementById('temp-container');
+            tempContainer.innerHTML = '';
+            temps.forEach((t, idx) => {
+                const div = document.createElement('div');
+                div.className = 'temp-card';
+                if (idx === step.i) div.className += ' active';
+                if (step.stack.includes(idx)) div.className += ' waiting';
+                if (idx === step.i && step.type === 'RESOLVE') div.className += ' resolver';
+                
+                div.innerHTML = `<span class="temp-idx">${idx}</span><span class="temp-val">${t}</span>`;
+                tempContainer.appendChild(div);
+            });
+
+            // Render Ans
+            const ansContainer = document.getElementById('ans-container');
+            ansContainer.innerHTML = '';
+            step.ans.forEach((a, idx) => {
+                const div = document.createElement('div');
+                div.className = 'ans-cell';
+                // Highlight if it was just updated in a RESOLVE step
+                if (step.type === 'RESOLVE' && idx === step.prevIdx) div.className += ' updated';
+                div.innerText = a;
+                ansContainer.appendChild(div);
+            });
+
+            // Render Stack
+            const stackView = document.getElementById('stack-view');
+            stackView.innerHTML = '';
+            step.stack.forEach(idx => {
+                const div = document.createElement('div');
+                div.className = 'stack-item';
+                div.innerHTML = `<span class="item-val">${temps[idx]}°</span><span class="item-idx">索引 ${idx}</span>`;
+                stackView.appendChild(div);
+            });
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'INIT') {
+                status.innerHTML = `准备开始巡逻气温...`;
+                subStatus.innerText = "大家都在起跑线上。";
+            } else if (step.type === 'PUSH') {
+                status.innerHTML = `第 ${step.i} 天: <span class="highlight-text">${step.t}°</span>`;
+                subStatus.innerText = "没发现比它更高的救星，进入等待区。";
+            } else if (step.type === 'RESOLVE') {
+                status.innerHTML = `<span class="emerald">找到救星！</span> 今天 ${step.t}° 比第 ${step.prevIdx} 天的 ${step.prevVal}° 高。`;
+                subStatus.innerHTML = `计算间隔: <span class="highlight-text">${step.i} - ${step.prevIdx} = ${step.diff}</span>。第 ${step.prevIdx} 天不用等了！`;
+            } else if (step.type === 'DONE') {
+                status.innerHTML = `🎉 <b>全部天数检查完毕！</b>`;
+                subStatus.innerText = "还没被救出的日子，说明后面再也没有更暖和的一天了（结果保持 0）。";
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+
+        generateSteps();
+        window.onload = render;
+    </script>
+</body>
+</html>

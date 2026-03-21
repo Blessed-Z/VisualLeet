@@ -1,0 +1,17 @@
+{
+  "id": 206,
+  "title": "206. 反转链表",
+  "slug": "reverse-linked-list",
+  "link": "https://leetcode.cn/problems/reverse-linked-list/",
+  "difficulty": "Easy",
+  "description": "给你单链表的头节点 head ，请你反转链表，并返回反转后的链表。",
+  "solutions": [
+    {
+      "name": "递归法 (优雅)",
+      "file": "recursion.py",
+      "time": "O(N)",
+      "space": "O(N)",
+      "is_optimal": true
+    }
+  ]
+}

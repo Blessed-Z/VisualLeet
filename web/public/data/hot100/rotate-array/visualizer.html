@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --primary-amber: #fbbf24;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .train-area { position: relative; width: 100%; display: flex; justify-content: center; gap: 10px; height: 120px; align-items: center; }
+        
+        .wagon {
+            width: 50px; height: 50px; background: #1c1c1e; border: 1.5px solid #3f3f46;
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; font-weight: bold; transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+        .wagon::after {
+            content: ''; position: absolute; right: -10px; width: 10px; height: 4px;
+            background: #333; top: 50%; transform: translateY(-50%);
+        }
+        .wagon:last-child::after { display: none; }
+
+        .is-tail { border-color: var(--primary-amber); background: rgba(251, 191, 36, 0.1); color: var(--primary-amber); }
+        .is-moving { transform: translateY(-60px) scale(1.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5); z-index: 100; }
+        .is-inserting { transform: translateY(0) scale(1); }
+
+        .stats { display: flex; gap: 15px; width: 100%; max-width: 600px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 12px; border-radius: 20px; text-align: center; flex: 1; }
+        .stat-val { font-size: 1.2rem; font-weight: 800; color: var(--primary-emerald); font-mono; }
+        .stat-name { font-size: 0.6rem; color: #636366; text-transform: uppercase; margin-top: 4px; font-weight: bold; }
+
+        .controls { display: flex; gap: 16px; margin-top: 10px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！要把火车最后的 <span class="highlight">k = 3</span> 节车厢搬到最前面。</div>
+        </div>
+
+        <div class="train-area" id="train">
+            <!-- Wagons will be injected -->
+        </div>
+
+        <div class="stats">
+            <div class="stat-card"><div id="val-k" class="stat-val">3</div><div class="stat-name">轮转步数 (K)</div></div>
+            <div class="stat-card"><div id="val-size" class="stat-val">7</div><div class="stat-name">总长度 (N)</div></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [1, 2, 3, 4, 5, 6, 7];
+        const k = 3;
+        let step = 0; // 0: highlight tail, 1: lift tail, 2: move to front, 3: finish
+
+        function init() {
+            const train = document.getElementById('train');
+            train.innerHTML = '';
+            nums.forEach((n, i) => {
+                const div = document.createElement('div');
+                div.className = 'wagon';
+                div.id = `wagon-${i}`;
+                div.innerText = n;
+                train.appendChild(div);
+            });
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const n = nums.length;
+            const tailCount = k % n;
+
+            if (step === 0) {
+                // Highlight tail
+                for (let i = n - tailCount; i < n; i++) {
+                    document.getElementById(`wagon-${i}`).classList.add('is-tail');
+                }
+                status.innerHTML = `第一步：识别火车的尾巴。我们要搬走最后 <span class="highlight">${tailCount}</span> 节。`;
+                step = 1;
+            } else if (step === 1) {
+                // Lift tail
+                for (let i = n - tailCount; i < n; i++) {
+                    document.getElementById(`wagon-${i}`).classList.add('is-moving');
+                }
+                status.innerHTML = `第二步：咔嚓一声，把尾巴整块切下来！`;
+                step = 2;
+            } else if (step === 2) {
+                // Rearrange in DOM
+                const train = document.getElementById('train');
+                const wagons = Array.from(train.children);
+                const tail = wagons.slice(n - tailCount);
+                const head = wagons.slice(0, n - tailCount);
+                
+                train.innerHTML = '';
+                [...tail, ...head].forEach(w => train.appendChild(w));
+                
+                // Keep moving state for animation
+                tail.forEach(w => w.classList.add('is-moving'));
+                status.innerHTML = `第三步：搬到最前面去，准备“合体”。`;
+                step = 3;
+            } else if (step === 3) {
+                // Drop down
+                document.querySelectorAll('.wagon').forEach(w => {
+                    w.classList.remove('is-moving', 'is-tail');
+                });
+                status.innerHTML = `🎉 啪嗒！拼接完成。新火车诞生啦！`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function reset() {
+            step = 0;
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

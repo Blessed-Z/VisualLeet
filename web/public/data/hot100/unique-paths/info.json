@@ -1,0 +1,18 @@
+{
+  "id": 62,
+  "title": "62. 不同路径",
+  "difficulty": "Medium",
+  "description": "一个机器人位于一个 m x n 网格的左上角。机器人每次只能向下或者向右移动一步。机器人试图达到网格的右下角。问总共有多少条不同的路径？",
+  "category": "动态规划",
+  "complexity": {
+    "time": "O(m * n)",
+    "space": "O(m * n)"
+  },
+  "solutions": [
+    {
+      "id": "dp",
+      "name": "动态规划",
+      "description": "定义 dp[i][j] 为到达坐标 (i, j) 的路径总数。状态转移方程为：dp[i][j] = dp[i-1][j] + dp[i][j-1]。"
+    }
+  ]
+}

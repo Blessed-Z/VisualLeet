@@ -1,0 +1,17 @@
+{
+  "id": 54,
+  "title": "54. 螺旋矩阵",
+  "slug": "spiral-matrix",
+  "link": "https://leetcode.cn/problems/spiral-matrix/",
+  "difficulty": "Medium",
+  "description": "给你一个 m 行 n 列的矩阵 matrix ，请按照 顺时针螺旋顺序 ，返回矩阵中的所有元素。",
+  "solutions": [
+    {
+      "name": "四边界收缩法 (最优)",
+      "file": "boundary-shrink.py",
+      "time": "O(MN)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

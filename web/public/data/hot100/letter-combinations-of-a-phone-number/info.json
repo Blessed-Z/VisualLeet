@@ -1,0 +1,18 @@
+{
+  "id": 17,
+  "slug": "letter-combinations-of-a-phone-number",
+  "title": "电话号码的字母组合",
+  "difficulty": "Medium",
+  "category": "回溯",
+  "tags": ["Hash Table", "String", "Backtracking"],
+  "description": "给定一个仅包含数字 2-9 的字符串，返回所有它能表示的字母组合。答案可以按 任意顺序 返回。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "回溯 DFS",
+      "time": "O(3^M \\times 4^N)",
+      "space": "O(M + N)"
+    }
+  ]
+}

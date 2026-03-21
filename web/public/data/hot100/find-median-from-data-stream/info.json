@@ -1,0 +1,18 @@
+{
+  "id": 295,
+  "title": "295. 数据流的中位数",
+  "difficulty": "Hard",
+  "description": "中位数是有序整数列表中的中间值。如果列表的大小是偶数，则没有中间值，中位数是两个中间值的平均值。设计一个支持 addNum(num) 和 findMedian() 的类。",
+  "category": "堆",
+  "complexity": {
+    "time": "addNum: O(log n), findMedian: O(1)",
+    "space": "O(n)"
+  },
+  "solutions": [
+    {
+      "id": "two-heaps",
+      "name": "双堆平衡法",
+      "description": "使用一个大顶堆存储较小的一半数字，一个小顶堆存储较大的一半数字，并保持两个堆的大小平衡。"
+    }
+  ]
+}

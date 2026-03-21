@@ -1,0 +1,18 @@
+{
+  "id": 287,
+  "title": "287. 寻找重复数",
+  "difficulty": "Medium",
+  "description": "给定一个包含 n + 1 个整数的数组 nums ，其数字都在 1 到 n 之间（包括 1 和 n），可知至少存在一个重复的整数。假设 nums 只有 一个重复的整数 ，返回 这个重复的数 。",
+  "category": "双指针",
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  },
+  "solutions": [
+    {
+      "id": "floyd-cycle",
+      "name": "快慢指针（弗洛伊德判圈算法）",
+      "description": "将数组看作一个链表，nums[i] 指向下一个节点的下标。由于存在重复数，链表中一定存在环，且重复数就是环的入口。"
+    }
+  ]
+}

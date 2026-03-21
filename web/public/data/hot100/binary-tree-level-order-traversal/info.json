@@ -1,0 +1,18 @@
+{
+  "id": 102,
+  "title": "二叉树的层序遍历",
+  "slug": "binary-tree-level-order-traversal",
+  "difficulty": "Medium",
+  "category": "二叉树",
+  "tags": ["Tree", "Breadth-First Search", "Binary Tree"],
+  "description": "给你一个二叉树，请你返回其按 层序遍历 得到的节点值。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "广度优先搜索",
+      "time": "O(n)",
+      "space": "O(n)"
+    }
+  ]
+}

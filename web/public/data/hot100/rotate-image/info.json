@@ -1,0 +1,17 @@
+{
+  "id": 48,
+  "title": "48. 旋转图像",
+  "slug": "rotate-image",
+  "link": "https://leetcode.cn/problems/rotate-image/",
+  "difficulty": "Medium",
+  "description": "给定一个 n × n 的二维矩阵 matrix 表示一个图像。请你将图像顺时针旋转 90 度。你必须在 原地 旋转图像。",
+  "solutions": [
+    {
+      "name": "四项原地交换 (最优)",
+      "file": "in-place.py",
+      "time": "O(N^2)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

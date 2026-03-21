@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .list-area { display: flex; gap: 20px; justify-content: center; margin-top: 30px; }
+        .node {
+            width: 45px; height: 45px; background: #111; border: 1.5px solid #333;
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; transition: all 0.4s; position: relative;
+        }
+        .node.active { border-color: var(--primary-violet); transform: translateY(-5px); box-shadow: 0 5px 15px var(--primary-violet); }
+        .node::after { content: '→'; position: absolute; right: -18px; color: #444; }
+        .node:last-child::after { content: '×'; color: #f44336; }
+
+        .array-area { display: flex; gap: 8px; margin-top: 40px; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 16px; min-height: 60px; min-width: 300px; justify-content: center; transition: all 0.8s; }
+        .array-item { width: 40px; height: 40px; border: 1px solid #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #1a1a1a; transition: all 0.5s; font-weight: bold; }
+        .array-item.match { border-color: var(--primary-emerald); color: var(--primary-emerald); }
+        .array-item.mismatch { border-color: var(--primary-rose); color: var(--primary-rose); }
+
+        .controls { display: flex; gap: 16px; margin-top: 10px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！先走一遍链表，把数字存进小仓库。</div>
+        </div>
+
+        <div class="list-area" id="list"></div>
+
+        <div class="array-area" id="array-display">
+            <!-- Items here -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const vals = [1, 2, 3, 2, 1];
+        let p1 = 0;
+        let phase = 'collect'; // 'collect' or 'check'
+        let checkIdx = 0;
+        const nodes = [];
+
+        function init() {
+            const list = document.getElementById('list');
+            list.innerHTML = '';
+            vals.forEach((v, i) => {
+                const div = document.createElement('div');
+                div.className = 'node';
+                div.id = `node-${i}`;
+                div.innerText = v;
+                list.appendChild(div);
+            });
+            document.getElementById('array-display').innerHTML = '';
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const arrayArea = document.getElementById('array-display');
+
+            if (phase === 'collect') {
+                if (p1 < vals.length) {
+                    document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+                    document.getElementById(`node-${p1}`).classList.add('active');
+                    
+                    const val = vals[p1];
+                    nodes.push(val);
+                    
+                    const item = document.createElement('div');
+                    item.className = 'array-item';
+                    item.id = `item-${p1}`;
+                    item.innerText = val;
+                    arrayArea.appendChild(item);
+                    
+                    status.innerHTML = `把节点 <span class="highlight">${val}</span> 抄写到仓库里。`;
+                    p1++;
+                } else {
+                    phase = 'check';
+                    status.innerHTML = `抄写完成！现在对比仓库 <span class="highlight">正着读</span> 和 <span class="highlight">倒着读</span> 是否一样。`;
+                    document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+                }
+            } else {
+                // Check phase
+                const n = nodes.length;
+                if (checkIdx < Math.floor(n / 2)) {
+                    const left = checkIdx;
+                    const right = n - 1 - checkIdx;
+                    
+                    const leftEl = document.getElementById(`item-${left}`);
+                    const rightEl = document.getElementById(`item-${right}`);
+                    
+                    if (nodes[left] === nodes[right]) {
+                        leftEl.classList.add('match');
+                        rightEl.classList.add('match');
+                        status.innerHTML = `对比位置 ${left} 和 ${right}：都是 <span style="color:var(--primary-emerald)">${nodes[left]}</span>，匹配！`;
+                        checkIdx++;
+                    } else {
+                        leftEl.classList.add('mismatch');
+                        rightEl.classList.add('mismatch');
+                        status.innerHTML = `对比位置 ${left} 和 ${right}：<span style="color:var(--primary-rose)">${nodes[left]}</span> 和 <span style="color:var(--primary-rose)">${nodes[right]}</span> 不一样！这不是回文。`;
+                        document.getElementById('next-btn').disabled = true;
+                    }
+                } else {
+                    status.innerHTML = `🎉 全部匹配！这确实是一个回文链表。`;
+                    document.getElementById('next-btn').disabled = true;
+                }
+            }
+        }
+
+        function reset() {
+            p1 = 0; checkIdx = 0; phase = 'collect'; nodes.length = 0;
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

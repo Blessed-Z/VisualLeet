@@ -1,0 +1,18 @@
+{
+  "id": 347,
+  "title": "347. 前 K 个高频元素",
+  "difficulty": "Medium",
+  "description": "给你一个整数数组 nums 和一个整数 k ，请你返回其中出现频率前 k 高的元素。你可以按 任意顺序 返回答案。",
+  "category": "堆",
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(n)"
+  },
+  "solutions": [
+    {
+      "id": "bucket-sort",
+      "name": "桶排序法",
+      "description": "先利用哈希表统计频率，再利用出现频率作为索引建立桶，最后从后往前收集桶中的元素直到满足 k 个。"
+    }
+  ]
+}

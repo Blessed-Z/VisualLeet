@@ -1,0 +1,18 @@
+{
+  "id": 78,
+  "slug": "subsets",
+  "title": "子集",
+  "difficulty": "Medium",
+  "category": "回溯",
+  "tags": ["Array", "Backtracking", "Bit Manipulation"],
+  "description": "给你一个整数数组 nums ，数组中的元素 互不相同 。返回该数组所有可能的子集（幂集）。解集 不能 包含重复的子集。你可以按 任意顺序 返回解集。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "回溯法",
+      "time": "O(N \\times 2^N)",
+      "space": "O(N)"
+    }
+  ]
+}

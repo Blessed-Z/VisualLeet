@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "mkdir -p public/data/hot100 && cp -r ../data/hot100/* public/data/hot100/ && next dev",
-    "build": "mkdir -p public/data/hot100 && cp -r ../data/hot100/* public/data/hot100/ && next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },

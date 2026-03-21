@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>200. 岛屿数量 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--emerald-green); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative; border: 1px solid #30363d; border-radius: 20px;
+            background: #1c2128; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; overflow: hidden;
+        }
+
+        .grid {
+            display: grid;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+
+        .cell {
+            width: 50px; height: 50px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.2em; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 2px solid #30363d;
+            background-color: #0d1117; color: #8b949e;
+        }
+
+        .cell.land { background-color: rgba(6, 214, 160, 0.2); border-color: var(--emerald-green); color: var(--emerald-green); }
+        .cell.water { background-color: rgba(30, 30, 30, 0.5); border-color: transparent; color: #444; }
+        .cell.scanning { border-color: var(--amber); box-shadow: 0 0 15px var(--amber); z-index: 10; transform: scale(1.1); }
+        .cell.dfs-active { background-color: rgba(255, 0, 110, 0.3); border-color: var(--rose-red); color: var(--rose-red); transform: scale(1.15); z-index: 10; }
+        .cell.sunk { background-color: rgba(157, 78, 221, 0.2); border-color: var(--primary-purple); color: var(--primary-purple); }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .highlight-text { font-weight: bold; padding: 0 4px; border-radius: 4px; }
+        .island-count { position: absolute; top: 20px; left: 20px; font-size: 1.2em; font-weight: bold; color: var(--emerald-green); background: rgba(6, 214, 160, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--emerald-green); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏝️ 岛屿数量</h1>
+        <div class="status-box">
+            <div id="status">直升机准备起飞，扫描整片海域。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始巡逻。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="island-count">已发现岛屿: <span id="count-display">0</span></div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+            <div class="grid" id="grid-container"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const initialGrid = [
+            ['1','1','0','0','0'],
+            ['1','1','0','0','0'],
+            ['0','0','1','0','0'],
+            ['0','0','0','1','1']
+        ];
+        
+        let grid = [];
+        let rows = initialGrid.length;
+        let cols = initialGrid[0].length;
+        
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+        let islandCount = 0;
+
+        function cloneGrid(g) { return g.map(row => [...row]); }
+
+        function generateSteps() {
+            grid = cloneGrid(initialGrid);
+            islandCount = 0;
+            steps = [];
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    steps.push({ type: 'SCAN', r, c, count: islandCount, grid: cloneGrid(grid) });
+                    if (grid[r][c] === '1') {
+                        islandCount++;
+                        steps.push({ type: 'FOUND', r, c, count: islandCount, grid: cloneGrid(grid) });
+                        dfs(r, c);
+                    }
+                }
+            }
+            steps.push({ type: 'DONE', count: islandCount, grid: cloneGrid(grid) });
+        }
+
+        function dfs(r, c) {
+            if (r < 0 || c < 0 || r >= rows || c >= cols || grid[r][c] === '0') {
+                return;
+            }
+            
+            steps.push({ type: 'DFS_VISIT', r, c, count: islandCount, grid: cloneGrid(grid) });
+            grid[r][c] = '0'; // sink it
+            steps.push({ type: 'SINK', r, c, count: islandCount, grid: cloneGrid(grid) });
+
+            dfs(r + 1, c);
+            dfs(r - 1, c);
+            dfs(r, c + 1);
+            dfs(r, c - 1);
+        }
+
+        function render() {
+            const container = document.getElementById('grid-container');
+            container.style.gridTemplateColumns = `repeat(${cols}, 50px)`;
+            container.style.transform = `scale(${zoomFactor})`;
+            container.innerHTML = '';
+
+            const step = steps[currentStep];
+            if (!step) return;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const div = document.createElement('div');
+                    let val = step.grid[r][c];
+                    let cls = 'cell';
+                    
+                    if (val === '1') cls += ' land';
+                    else cls += ' water';
+
+                    // If it was originally land but is now water, it's sunk
+                    if (val === '0' && initialGrid[r][c] === '1') {
+                        cls += ' sunk';
+                    }
+
+                    if (step.type === 'SCAN' && step.r === r && step.c === c) {
+                        cls += ' scanning';
+                    } else if (step.type === 'FOUND' && step.r === r && step.c === c) {
+                        cls += ' dfs-active';
+                    } else if (step.type === 'DFS_VISIT' && step.r === r && step.c === c) {
+                        cls += ' dfs-active';
+                    } else if (step.type === 'SINK' && step.r === r && step.c === c) {
+                        cls += ' sunk dfs-active';
+                    }
+
+                    div.className = cls;
+                    div.innerText = val;
+                    container.appendChild(div);
+                }
+            }
+
+            document.getElementById('count-display').innerText = step.count;
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'SCAN') {
+                status.innerHTML = `直升机巡视坐标 <span class="amber highlight-text">(${step.r}, ${step.c})</span>。`;
+                subStatus.innerText = step.grid[step.r][step.c] === '1' ? `发现陆地！准备降落。` : `这是一片水域，继续前进。`;
+            } else if (step.type === 'FOUND') {
+                status.innerHTML = `🌟 <b>发现新岛屿！</b> 岛屿编号：${step.count}`;
+                subStatus.innerHTML = `派出特种部队降落，准备施展<span class="rose highlight-text">沉岛魔法</span>。`;
+            } else if (step.type === 'DFS_VISIT') {
+                status.innerHTML = `特种部队到达 <span class="rose highlight-text">(${step.r}, ${step.c})</span>。`;
+                subStatus.innerText = `发现相连的陆地！`;
+            } else if (step.type === 'SINK') {
+                status.innerHTML = `施展魔法，坐标 <span class="purple highlight-text">(${step.r}, ${step.c})</span> 沉入海底。`;
+                subStatus.innerText = `为了防止重复计算，将陆地标记为水域 (0)，然后向四周继续探索。`;
+            } else if (step.type === 'DONE') {
+                status.innerHTML = `🏁 <b>巡视完毕！</b>`;
+                subStatus.innerText = `这片海域共有 ${step.count} 座岛屿。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; zoomFactor = Math.max(0.4, Math.min(3, zoomFactor)); render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; init(); }
+
+        function init() {
+            generateSteps();
+            render();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

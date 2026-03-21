@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --primary-amber: #fbbf24;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 850px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .list-container { position: relative; width: 100%; height: 350px; margin-top: 40px; }
+        
+        .node {
+            position: absolute; width: 45px; height: 45px; background: #111; border: 1.5px solid #333;
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1rem; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+        .node.dummy { border-style: dashed; border-color: #555; color: #555; font-size: 0.7rem; }
+        .node.active { border-color: var(--primary-amber); box-shadow: 0 0 15px var(--primary-amber); }
+        .node.picked { border-color: var(--primary-emerald); color: var(--primary-emerald); transform: scale(0.9); }
+
+        .ptr {
+            position: absolute; width: 55px; height: 55px; border-radius: 14px;
+            border: 2px solid transparent; transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+        }
+        .ptr-label { position: absolute; top: -25px; font-size: 0.6rem; font-weight: 900; text-transform: uppercase; width: 60px; text-align: center; left: -2.5px; }
+        
+        #ptr-1 { border-color: var(--primary-rose); }
+        #ptr-1 .ptr-label { color: var(--primary-rose); }
+        #ptr-2 { border-color: var(--primary-violet); }
+        #ptr-2 .ptr-label { color: var(--primary-violet); }
+        #ptr-curr { border-color: var(--primary-emerald); border-style: dotted; }
+        #ptr-curr .ptr-label { color: var(--primary-emerald); top: 55px; }
+
+        .controls { display: flex; gap: 16px; margin-top: 20px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        line { stroke: #222; stroke-width: 2; transition: all 0.5s; }
+        line.active-link { stroke: var(--primary-emerald); stroke-width: 3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！我们要挑出 list1 和 list2 中更小的那个人。</div>
+        </div>
+
+        <div class="list-container" id="list-area">
+            <svg id="svg-layer"></svg>
+            <!-- Dummy Node -->
+            <div class="node dummy" id="node-dummy" style="left: 50px; top: 150px;">DUMMY</div>
+            <div id="ptr-1" class="ptr"><span class="ptr-label">List 1</span></div>
+            <div id="ptr-2" class="ptr"><span class="ptr-label">List 2</span></div>
+            <div id="ptr-curr" class="ptr"><span class="ptr-label">Curr</span></div>
+            <!-- Nodes will be injected -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const l1 = [1, 2, 4];
+        const l2 = [1, 3, 4];
+        
+        let p1 = 0, p2 = 0;
+        let currNodeId = 'dummy';
+        const mergedIds = [];
+        let isFinished = false;
+
+        function init() {
+            const area = document.getElementById('list-area');
+            const svg = document.getElementById('svg-layer');
+            svg.innerHTML = '';
+            
+            // Render List 1
+            l1.forEach((v, i) => createNode(`l1-${i}`, v, 50, 150 + i * 80, 'rose'));
+            // Render List 2
+            l2.forEach((v, i) => createNode(`l2-${i}`, v, 250, 150 + i * 80, 'violet'));
+            
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function createNode(id, val, top, left, color) {
+            const div = document.createElement('div');
+            div.className = `node`;
+            div.id = `node-${id}`;
+            div.style.top = top + 'px';
+            div.style.left = left + 'px';
+            div.innerText = val;
+            document.getElementById('list-area').appendChild(div);
+        }
+
+        function updateUI() {
+            const node1 = document.getElementById(`node-l1-${p1}`);
+            const node2 = document.getElementById(`node-l2-${p2}`);
+            const nodeCurr = document.getElementById(`node-${currNodeId}`);
+
+            if (p1 < l1.length) {
+                document.getElementById('ptr-1').style.left = (node1.offsetLeft - 5) + 'px';
+                document.getElementById('ptr-1').style.top = (node1.offsetTop - 5) + 'px';
+                document.getElementById('ptr-1').style.opacity = 1;
+            } else { document.getElementById('ptr-1').style.opacity = 0; }
+
+            if (p2 < l2.length) {
+                document.getElementById('ptr-2').style.left = (node2.offsetLeft - 5) + 'px';
+                document.getElementById('ptr-2').style.top = (node2.offsetTop - 5) + 'px';
+                document.getElementById('ptr-2').style.opacity = 1;
+            } else { document.getElementById('ptr-2').style.opacity = 0; }
+
+            document.getElementById('ptr-curr').style.left = (nodeCurr.offsetLeft - 5) + 'px';
+            document.getElementById('ptr-curr').style.top = (nodeCurr.offsetTop - 5) + 'px';
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const svg = document.getElementById('svg-layer');
+
+            if (p1 < l1.length && p2 < l2.length) {
+                const v1 = l1[p1], v2 = l2[p2];
+                let pickedId;
+                if (v1 <= v2) {
+                    status.innerHTML = `比较 <span class="highlight">${v1}</span> 和 <span class="highlight">${v2}</span>。L1 的更小或相等，接上它！`;
+                    pickedId = `l1-${p1}`;
+                    p1++;
+                } else {
+                    status.innerHTML = `比较 <span class="highlight">${v1}</span> 和 <span class="highlight">${v2}</span>。L2 的更小，接上它！`;
+                    pickedId = `l2-${p2}`;
+                    p2++;
+                }
+                
+                linkNodes(currNodeId, pickedId);
+                currNodeId = pickedId;
+                document.getElementById(`node-${pickedId}`).classList.add('picked');
+            } else if (p1 < l1.length || p2 < l2.length) {
+                const listName = p1 < l1.length ? 'L1' : 'L2';
+                const pickedId = p1 < l1.length ? `l1-${p1}` : `l2-${p2}`;
+                status.innerHTML = `其中一队走完了。把剩下的 <span class="highlight">${listName}</span> 全部接在后面。`;
+                
+                linkNodes(currNodeId, pickedId);
+                // In a real loop this would finish all, here we just show the first of the remainder for brevity or loop
+                if (p1 < l1.length) p1++; else p2++;
+                currNodeId = pickedId;
+                document.getElementById(`node-${pickedId}`).classList.add('picked');
+            } else {
+                status.innerHTML = `🎉 合并完成！得到了一条完美的有序链表。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+            updateUI();
+        }
+
+        function linkNodes(idFrom, idTo) {
+            const from = document.getElementById(`node-${idFrom}`);
+            const to = document.getElementById(`node-${idTo}`);
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", from.offsetLeft + 22);
+            line.setAttribute("y1", from.offsetTop + 22);
+            line.setAttribute("x2", to.offsetLeft + 22);
+            line.setAttribute("y2", to.offsetTop + 22);
+            line.classList.add('active-link');
+            document.getElementById('svg-layer').appendChild(line);
+        }
+
+        function reset() {
+            p1 = 0; p2 = 0; currNodeId = 'dummy';
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            const area = document.getElementById('list-area');
+            area.querySelectorAll('.node:not(.dummy)').forEach(n => n.remove());
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

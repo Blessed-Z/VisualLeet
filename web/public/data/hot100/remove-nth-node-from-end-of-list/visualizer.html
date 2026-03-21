@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>19. 删除链表的倒数第 N 个节点 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* 改为从顶部开始，配合 padding 居中 */
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+            overflow-y: auto; /* 允许纵向滚动 */
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1000px;
+            text-align: center;
+        }
+
+        .status-box {
+            background-color: var(--node-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            border-left: 5px solid var(--primary-purple);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .visualization-area {
+            position: relative;
+            height: 300px;
+            margin-bottom: 30px;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .list-row {
+            display: flex;
+            align-items: center;
+            gap: 0; /* Gap managed by node-group margin */
+            position: relative;
+        }
+
+        .node-group {
+            display: flex;
+            align-items: center;
+            position: relative;
+            width: 100px; /* Fixed width for predictable movement */
+            justify-content: center;
+        }
+
+        .node {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background-color: var(--node-bg);
+            border: 2px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .node.dummy {
+            border-style: dashed;
+            border-color: #8b949e;
+        }
+
+        .node.target {
+            border-color: var(--rose-red);
+            color: var(--rose-red);
+            box-shadow: 0 0 10px rgba(255, 0, 110, 0.3);
+        }
+
+        .node.removed {
+            opacity: 0.2;
+            transform: scale(0.8) translateY(20px);
+        }
+
+        .arrow {
+            position: absolute;
+            right: -15px;
+            font-size: 20px;
+            color: #30363d;
+            z-index: 1;
+            transition: all 0.5s ease;
+        }
+
+        .arrow.skip {
+            color: var(--emerald-green);
+            transform: scaleX(2.5) translateX(15px);
+            opacity: 0.8;
+        }
+
+        /* Pointers */
+        .pointer {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ptr-label {
+            position: absolute;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        #ptr-fast { border-color: var(--primary-purple); }
+        #ptr-fast .ptr-label { 
+            background: var(--primary-purple); 
+            color: white; 
+            top: -30px; 
+        }
+
+        #ptr-slow { border-color: var(--amber); }
+        #ptr-slow .ptr-label { 
+            background: var(--amber); 
+            color: black; 
+            bottom: -30px; 
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 1em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>⛓️ 删除链表的倒数第 N 个节点</h1>
+        <div class="status-box" id="status">
+            准备开始！我们要删除倒数第 2 个节点。
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <!-- Pointers -->
+            <div id="ptr-fast" class="pointer"><span class="ptr-label">Fast</span></div>
+            <div id="ptr-slow" class="pointer"><span class="ptr-label">Slow</span></div>
+
+            <div class="list-row" id="list-container">
+                <!-- Nodes will be injected here -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const n = 2;
+        const vals = [1, 2, 3, 4, 5];
+        let step = 0;
+        let fastIdx = 0; // 0 is Dummy, 1 is vals[0]...
+        let slowIdx = 0; // 0 is Dummy
+
+        function init() {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+            
+            // Add Dummy
+            addNode(container, 'D', 'dummy', 0);
+            
+            // Add Nodes
+            vals.forEach((v, i) => {
+                addNode(container, v, '', i + 1);
+            });
+
+            step = 0;
+            fastIdx = 0;
+            slowIdx = 0;
+            updatePointers();
+            document.getElementById('status').innerHTML = `准备开始！我们要删除倒数第 <b style="color:var(--amber)">${n}</b> 个节点。<br>先设置一个<b>虚拟头节点 (Dummy)</b>。`;
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function addNode(parent, val, className, id) {
+            const group = document.createElement('div');
+            group.className = 'node-group';
+            group.id = `group-${id}`;
+            
+            const node = document.createElement('div');
+            node.className = `node ${className}`;
+            node.innerText = val;
+            node.id = `node-${id}`;
+            
+            group.appendChild(node);
+            
+            if (id <= vals.length) {
+                const arrow = document.createElement('div');
+                arrow.className = 'arrow';
+                arrow.innerText = '→';
+                arrow.id = `arrow-${id}`;
+                group.appendChild(arrow);
+            }
+            
+            parent.appendChild(group);
+        }
+
+        function updatePointers() {
+            const fastPtr = document.getElementById('ptr-fast');
+            const slowPtr = document.getElementById('ptr-slow');
+            
+            // Calculate positions
+            // Each group is 100px wide
+            const offset = (fastIdx) * 100;
+            const slowOffset = (slowIdx) * 100;
+            
+            // Container centering adjustment
+            const containerWidth = (vals.length + 1) * 100;
+            const startPos = -containerWidth / 2 + 50; 
+
+            fastPtr.style.transform = `translateX(${startPos + offset}px)`;
+            slowPtr.style.transform = `translateX(${startPos + slowOffset}px)`;
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            
+            if (step < n + 1) {
+                // Phase 1: Fast moves n+1 steps (to keep slow at prev of target)
+                fastIdx++;
+                status.innerHTML = `第 ${step + 1} 步：<b>Fast</b> 指针向前走，拉开 <b>n+1</b> 的距离。`;
+                step++;
+            } else if (fastIdx <= vals.length) {
+                // Phase 2: Move together
+                fastIdx++;
+                slowIdx++;
+                status.innerHTML = `同步移动：<b>Fast</b> 还没到头，两兄弟一起往后移。`;
+            } else {
+                // Phase 3: Fast is at null (beyond last node)
+                // slowIdx is at the node BEFORE the target
+                const targetIdx = slowIdx + 1;
+                status.innerHTML = `<b>Fast</b> 到达了虚空！<br><b>Slow</b> 现在就在要删除的节点 <b>${vals[targetIdx-1]}</b> 的前一个！<br><span style="color:var(--emerald-green)">跨过去，大功告成！</span>`;
+                
+                document.getElementById(`node-${targetIdx}`).classList.add('removed');
+                document.getElementById(`arrow-${slowIdx}`).classList.add('skip');
+                
+                document.getElementById('next-btn').disabled = true;
+                return;
+            }
+            
+            updatePointers();
+        }
+
+        function reset() {
+            init();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

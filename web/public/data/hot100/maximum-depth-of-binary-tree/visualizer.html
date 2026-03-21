@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二叉树最大深度可视化</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        #container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        #viz-area {
+            flex: 2;
+            min-width: 600px;
+            height: 500px;
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            border: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(13, 17, 23, 0.8);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            z-index: 100;
+        }
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            padding: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: #161b22 !important;
+            color: #10b981 !important;
+            border: 1px solid #30363d !important;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .zoom-btn:hover {
+            background: #30363d !important;
+            color: #a855f7 !important;
+            border-color: #a855f7 !important;
+        }
+        #sidebar {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #call-stack, #info-panel {
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #30363d;
+        }
+        #call-stack { flex: 2; overflow-y: auto; }
+        #info-panel { flex: 1; }
+        
+        h3 { margin-top: 0; color: #10b981; }
+        
+        .stack-frame {
+            background-color: #064e3b;
+            border: 1px solid #10b981;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+        }
+        
+        .node circle {
+            fill: #1e293b;
+            stroke: #475569;
+            stroke-width: 2px;
+            transition: all 0.3s;
+        }
+        
+        .node text {
+            fill: #e2e8f0;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+        
+        .node.active circle {
+            stroke: #f43f5e;
+            stroke-width: 4px;
+            fill: #4c0519;
+        }
+        
+        .node.computed circle {
+            fill: #064e3b;
+            stroke: #10b981;
+        }
+        
+        .node-depth {
+            fill: #10b981;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .link {
+            stroke: #475569;
+            stroke-width: 2px;
+            fill: none;
+        }
+        
+        #controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        
+        button {
+            background-color: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        
+        button:hover { background-color: #059669; }
+        button:disabled { background-color: #30363d; color: #8b949e; cursor: not-allowed; }
+        
+        #status-text {
+            margin-top: 10px;
+            font-size: 1.1em;
+            color: #f43f5e;
+            min-height: 1.5em;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="viz-area">
+            <h3>探险队高度测量中</h3>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(0.1)" title="放大">+</button>
+                <button class="zoom-btn" onclick="changeZoom(-0.1)" title="缩小">-</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="重置">⟲</button>
+            </div>
+            <div id="status-text">点击“下一步”开始测量</div>
+            <svg id="tree-svg"></svg>
+            <div id="controls">
+                <button id="reset-btn">重置</button>
+                <button id="next-btn">下一步</button>
+            </div>
+        </div>
+        <div id="sidebar">
+            <div id="call-stack">
+                <h3>递归调用栈</h3>
+                <div id="stack-list" style="display: flex; flex-direction: column-reverse;"></div>
+            </div>
+            <div id="info-panel">
+                <h3>当前高度统计</h3>
+                <div id="depth-stats" style="font-size: 1.2em; color: #f59e0b;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            id: 1, val: 3,
+            left: { id: 2, val: 9, left: null, right: null },
+            right: {
+                id: 3, val: 20,
+                left: { id: 4, val: 15, left: null, right: null },
+                right: { id: 5, val: 7, left: null, right: null }
+            }
+        };
+
+        let nodes = [];
+        let links = [];
+        let callStack = [];
+        let computedDepths = new Map();
+        let finished = false;
+
+        function flatten(node, x, y, dx) {
+            if (!node) return;
+            node.x = x;
+            node.y = y;
+            nodes.push(node);
+            if (node.left) {
+                links.push({ source: node, target: node.left });
+                flatten(node.left, x - dx, y + 80, dx / 2);
+            }
+            if (node.right) {
+                links.push({ source: node, target: node.right });
+                flatten(node.right, x + dx, y + 80, dx / 2);
+            }
+        }
+
+        const svg = document.getElementById('tree-svg');
+        const stackList = document.getElementById('stack-list');
+        const depthStats = document.getElementById('depth-stats');
+        const statusText = document.getElementById('status-text');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        let zoomFactor = 1.0;
+
+        function changeZoom(delta) {
+            zoomFactor = Math.max(0.2, Math.min(5.0, zoomFactor + delta));
+            render();
+        }
+
+        function resetZoom() {
+            zoomFactor = 1.0;
+            render();
+        }
+
+        function init() {
+            nodes = [];
+            links = [];
+            callStack = [];
+            computedDepths.clear();
+            finished = false;
+            flatten(treeData, 400, 50, 150);
+            statusText.innerText = "探险队集结完毕，准备从根节点出发";
+            depthStats.innerText = "";
+            nextBtn.disabled = false;
+            
+            // Initial call
+            callStack.push({ node: treeData, state: 'START' });
+            render();
+        }
+
+        function render() {
+            svg.innerHTML = '';
+
+            if (nodes.length > 0) {
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                nodes.forEach(n => {
+                    minX = Math.min(minX, n.x);
+                    maxX = Math.max(maxX, n.x);
+                    minY = Math.min(minY, n.y);
+                    maxY = Math.max(maxY, n.y);
+                });
+                
+                const padding = 40;
+                const zoomW = (maxX - minX + padding * 2) / zoomFactor;
+                const zoomH = (maxY - minY + padding * 2) / zoomFactor;
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                svg.setAttribute('viewBox', `${centerX - zoomW / 2} ${centerY - zoomH / 2} ${zoomW} ${zoomH}`);
+            }
+
+            // Links
+            links.forEach(l => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', l.source.x);
+                line.setAttribute('y1', l.source.y);
+                line.setAttribute('x2', l.target.x);
+                line.setAttribute('y2', l.target.y);
+                line.setAttribute('class', 'link');
+                svg.appendChild(line);
+            });
+            // Nodes
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let className = 'node';
+                const activeFrame = callStack[callStack.length - 1];
+                if (activeFrame && activeFrame.node === n) className += ' active';
+                if (computedDepths.has(n.id)) className += ' computed';
+                g.setAttribute('class', className);
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', n.x);
+                circle.setAttribute('cy', n.y);
+                circle.setAttribute('r', 20);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', n.x);
+                text.setAttribute('y', n.y);
+                text.textContent = n.val;
+
+                if (computedDepths.has(n.id)) {
+                    const depthText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    depthText.setAttribute('x', n.x + 25);
+                    depthText.setAttribute('y', n.y - 25);
+                    depthText.setAttribute('class', 'node-depth');
+                    depthText.textContent = `H=${computedDepths.get(n.id)}`;
+                    g.appendChild(depthText);
+                }
+                
+                g.appendChild(circle);
+                g.appendChild(text);
+                svg.appendChild(g);
+            });
+
+            // Call Stack
+            stackList.innerHTML = '';
+            callStack.forEach((frame, i) => {
+                const div = document.createElement('div');
+                div.className = 'stack-frame';
+                div.innerHTML = `<strong>maxDepth(${frame.node ? frame.node.val : 'null'})</strong><br>状态: ${frame.state}`;
+                stackList.appendChild(div);
+            });
+        }
+
+        nextBtn.onclick = () => {
+            if (finished) return;
+            const currentFrame = callStack[callStack.length - 1];
+
+            if (!currentFrame.node) {
+                statusText.innerText = "遇到空节点，返回高度 0";
+                callStack.pop();
+                const parentFrame = callStack[callStack.length - 1];
+                if (parentFrame.state === 'LEFT') {
+                    parentFrame.leftHeight = 0;
+                    parentFrame.state = 'RIGHT_START';
+                } else if (parentFrame.state === 'RIGHT') {
+                    parentFrame.rightHeight = 0;
+                    parentFrame.state = 'COMPUTE';
+                }
+            } else if (currentFrame.state === 'START') {
+                statusText.innerText = `进入节点 ${currentFrame.node.val}，派出左路探险队`;
+                currentFrame.state = 'LEFT';
+                callStack.push({ node: currentFrame.node.left, state: 'START' });
+            } else if (currentFrame.state === 'RIGHT_START') {
+                statusText.innerText = `节点 ${currentFrame.node.val} 左路返回 ${currentFrame.leftHeight}，派出右路探险队`;
+                currentFrame.state = 'RIGHT';
+                callStack.push({ node: currentFrame.node.right, state: 'START' });
+            } else if (currentFrame.state === 'COMPUTE') {
+                const h = Math.max(currentFrame.leftHeight, currentFrame.rightHeight) + 1;
+                statusText.innerText = `节点 ${currentFrame.node.val} 左右路均返回。高度 = max(${currentFrame.leftHeight}, ${currentFrame.rightHeight}) + 1 = ${h}`;
+                computedDepths.set(currentFrame.node.id, h);
+                callStack.pop();
+                if (callStack.length > 0) {
+                    const parentFrame = callStack[callStack.length - 1];
+                    if (parentFrame.state === 'LEFT') {
+                        parentFrame.leftHeight = h;
+                        parentFrame.state = 'RIGHT_START';
+                    } else if (parentFrame.state === 'RIGHT') {
+                        parentFrame.rightHeight = h;
+                        parentFrame.state = 'COMPUTE';
+                    }
+                } else {
+                    finished = true;
+                    statusText.innerText = `探险结束！整棵树最大高度为 ${h}`;
+                    depthStats.innerText = `最大深度: ${h}`;
+                    nextBtn.disabled = true;
+                }
+            }
+            render();
+        };
+
+        resetBtn.onclick = init;
+        init();
+    </script>
+</body>
+</html>

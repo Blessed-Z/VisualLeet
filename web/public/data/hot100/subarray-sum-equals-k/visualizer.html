@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --primary-amber: #fbbf24;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .array-view { display: flex; gap: 8px; justify-content: center; margin-top: 20px; }
+        .num-box { width: 45px; height: 45px; border: 1px solid #3f3f46; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; background: #18181b; transition: all 0.4s; position: relative; }
+        .active { border-color: var(--primary-violet); background: rgba(167, 139, 250, 0.1); transform: translateY(-5px); }
+
+        .logic-area { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 600px; margin-top: 10px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 20px; }
+        .card-title { font-size: 0.65rem; font-weight: 900; color: #71717a; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.05em; text-align: center; }
+        
+        .big-val { font-size: 2rem; font-weight: 900; color: var(--primary-violet); text-align: center; font-mono; }
+        
+        .hash-list { display: flex; flex-direction: column; gap: 6px; }
+        .hash-item { display: flex; justify-content: space-between; padding: 6px 12px; background: rgba(255,255,255,0.02); border-radius: 8px; font-size: 0.8rem; border: 1px solid transparent; transition: all 0.3s; }
+        .hash-item.target { border-color: var(--primary-rose); background: rgba(251, 113, 133, 0.1); transform: scale(1.05); }
+        .hash-key { color: var(--primary-amber); font-weight: bold; }
+        .hash-val { color: var(--primary-emerald); }
+
+        .ans-badge { margin-top: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--primary-emerald); color: var(--primary-emerald); padding: 8px 24px; border-radius: 99px; font-size: 1rem; font-weight: 900; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+
+        .controls { display: flex; gap: 16px; margin-top: 10px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！目标和 <span class="highlight" style="color:var(--primary-amber)">k = 3</span>。</div>
+        </div>
+
+        <div class="array-view" id="array"></div>
+
+        <div id="ans-display" class="ans-badge">找到个数: 0</div>
+
+        <div class="logic-area">
+            <div class="card">
+                <div class="card-title">当前总和 (s)</div>
+                <div id="current-s" class="big-val">0</div>
+                <div id="search-text" style="font-size: 0.7rem; color: #71717a; text-align: center; margin-top: 10px;"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">魔法账本 (cnt)</div>
+                <div class="hash-list" id="hash-list"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [1, 2, 3, -2, 2];
+        const k = 3;
+        let idx = 0;
+        let s = 0;
+        let ans = 0;
+        const cnt = { 0: 0 }; // 初始状态，s=0 还没记入，按照用户代码逻辑
+
+        function init() {
+            const container = document.getElementById('array');
+            container.innerHTML = '';
+            nums.forEach((n, i) => {
+                const div = document.createElement('div');
+                div.className = 'num-box';
+                div.id = `num-${i}`;
+                div.innerText = n;
+                container.appendChild(div);
+            });
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI(targetKey = null) {
+            document.getElementById('current-s').innerText = s;
+            document.getElementById('ans-display').innerText = `找到个数: ${ans}`;
+            
+            const list = document.getElementById('hash-list');
+            list.innerHTML = Object.entries(cnt).map(([sum, freq]) => `
+                <div class="hash-item ${targetKey == sum ? 'target' : ''}">
+                    <span class="hash-key">Sum: ${sum}</span>
+                    <span class="hash-val">次: ${freq}</span>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.num-box').forEach((b, i) => {
+                if (i === idx) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+        }
+
+        let subStep = 0; // 0: record, 1: add, 2: search
+        function nextStep() {
+            const status = document.getElementById('status');
+            const searchBox = document.getElementById('search-text');
+            
+            if (idx >= nums.length) {
+                status.innerHTML = "🎉 所有的路都走完啦！大功告成。";
+                document.getElementById('next-btn').disabled = true;
+                return;
+            }
+
+            const x = nums[idx];
+
+            if (subStep === 0) {
+                // 1. cnt[s] += 1
+                cnt[s] = (cnt[s] || 0) + 1;
+                status.innerHTML = `第一步：把进入路口前的总和 <span class="highlight">${s}</span> 记入账本。`;
+                updateUI();
+                subStep = 1;
+            } else if (subStep === 1) {
+                // 2. s += x
+                const oldS = s;
+                s += x;
+                status.innerHTML = `第二步：拿走格子的 <span class="highlight" style="color:var(--primary-emerald)">${x}</span>。总和从 ${oldS} 变为 <span class="highlight">${s}</span>。`;
+                updateUI();
+                subStep = 2;
+            } else if (subStep === 2) {
+                // 3. ans += cnt[s - k]
+                const target = s - k;
+                const matchCount = cnt[target] || 0;
+                searchBox.innerHTML = `正在寻找差值: s - k = ${s} - ${k} = <span style="color:var(--primary-rose)">${target}</span>`;
+                
+                if (matchCount > 0) {
+                    ans += matchCount;
+                    status.innerHTML = `第三步：在账本里发现了 <span class="highlight" style="color:var(--primary-rose)">${target}</span> 出现过 <span class="highlight">${matchCount}</span> 次！<br>这意味着我们找到了 ${matchCount} 段符合要求的区间！`;
+                } else {
+                    status.innerHTML = `第三步：在账本里没找到 <span class="highlight" style="color:var(--primary-rose)">${target}</span>。继续往前走。`;
+                }
+                updateUI(target);
+                
+                idx++;
+                subStep = 0;
+            }
+        }
+
+        function reset() {
+            idx = 0; s = 0; ans = 0; subStep = 0;
+            for(let k in cnt) delete cnt[k];
+            cnt[0] = 0; 
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            document.getElementById('search-text').innerText = "";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>108. 将有序数组转换为二叉搜索树 可视化</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #121212;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #controls {
+            padding: 20px;
+            background-color: #1e1e1e;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        button {
+            background-color: #7b1fa2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #9c27b0;
+        }
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+        }
+        #canvas-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 600px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        .node circle {
+            fill: #1e1e1e;
+            stroke: #7b1fa2;
+            stroke-width: 3;
+        }
+        .node text {
+            fill: white;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+        .link {
+            stroke: #444;
+            stroke-width: 2;
+            fill: none;
+        }
+        .array-container {
+            display: flex;
+            margin-top: 20px;
+            padding: 10px;
+            background: #1e1e1e;
+            border-radius: 8px;
+        }
+        .array-item {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #7b1fa2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 5px;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .array-item.active {
+            background-color: #c2185b;
+            transform: translateY(-5px);
+        }
+        .array-item.processed {
+            opacity: 0.3;
+        }
+        .status-text {
+            margin: 20px;
+            font-size: 1.2rem;
+            color: #ffca28;
+            height: 1.5em;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: rgba(30, 30, 30, 0.8);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .zoom-controls button {
+            padding: 5px 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button onclick="reset()">⟲ 重置</button>
+        <button id="nextBtn" onclick="nextStep()">下一步</button>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始转换</div>
+
+    <div class="array-container" id="arrayDisplay"></div>
+
+    <div id="canvas-container">
+        <svg id="svg">
+            <g id="main-group"></g>
+        </svg>
+        <div class="zoom-controls">
+            <button onclick="zoomIn()">+</button>
+            <button onclick="zoomOut()">-</button>
+            <button onclick="resetZoom()">⟲</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [-10, -3, 0, 5, 9];
+        let steps = [];
+        let currentStep = -1;
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+
+        function initArray() {
+            const container = document.getElementById('arrayDisplay');
+            container.innerHTML = nums.map((num, i) => 
+                `<div class="array-item" id="arr-${i}">${num}</div>`
+            ).join('');
+        }
+
+        function generateSteps() {
+            const resultSteps = [];
+            const nodes = [];
+            const links = [];
+
+            function buildBST(left, right, depth, x, parentX, parentY) {
+                if (left > right) return null;
+
+                const mid = Math.floor((left + right) / 2);
+                const node = {
+                    id: mid,
+                    val: nums[mid],
+                    left: left,
+                    right: right,
+                    depth: depth,
+                    x: x,
+                    y: depth * 80 + 50
+                };
+
+                resultSteps.push({
+                    type: 'highlight',
+                    left, right, mid,
+                    status: `在区间 [${left}, ${right}] 中取中间值 ${nums[mid]} 作为根节点`
+                });
+
+                resultSteps.push({
+                    type: 'addNode',
+                    node,
+                    parentLink: parentX !== undefined ? { x1: parentX, y1: parentY, x2: node.x, y2: node.y } : null,
+                    status: `将 ${nums[mid]} 加入树中`
+                });
+
+                const spacing = 400 / Math.pow(2, depth);
+                node.leftTree = buildBST(left, mid - 1, depth + 1, x - spacing, node.x, node.y);
+                node.rightTree = buildBST(mid + 1, right, depth + 1, x + spacing, node.x, node.y);
+
+                return node;
+            }
+
+            buildBST(0, nums.length - 1, 0, 400, undefined, undefined);
+            return resultSteps;
+        }
+
+        function draw() {
+            const mainGroup = document.getElementById('main-group');
+            mainGroup.innerHTML = '';
+            mainGroup.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+
+            const current = steps.slice(0, currentStep + 1);
+            
+            // Draw links
+            current.forEach(step => {
+                if (step.type === 'addNode' && step.parentLink) {
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute('x1', step.parentLink.x1);
+                    line.setAttribute('y1', step.parentLink.y1);
+                    line.setAttribute('x2', step.parentLink.x2);
+                    line.setAttribute('y2', step.parentLink.y2);
+                    line.setAttribute('class', 'link');
+                    mainGroup.appendChild(line);
+                }
+            });
+
+            // Draw nodes
+            current.forEach(step => {
+                if (step.type === 'addNode') {
+                    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    g.setAttribute('class', 'node');
+                    
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute('cx', step.node.x);
+                    circle.setAttribute('cy', step.node.y);
+                    circle.setAttribute('r', 20);
+                    
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.setAttribute('x', step.node.x);
+                    text.setAttribute('y', step.node.y);
+                    text.textContent = step.node.val;
+                    
+                    g.appendChild(circle);
+                    g.appendChild(text);
+                    mainGroup.appendChild(g);
+                }
+            });
+
+            // Update array highlight
+            document.querySelectorAll('.array-item').forEach(el => el.classList.remove('active', 'processed'));
+            if (currentStep >= 0) {
+                const step = steps[currentStep];
+                if (step.type === 'highlight' || step.type === 'addNode') {
+                    for (let i = step.left; i <= step.right; i++) {
+                        document.getElementById(`arr-${i}`).classList.add('active');
+                    }
+                    if (step.mid !== undefined) {
+                        // Mark processed
+                        steps.slice(0, currentStep).forEach(prev => {
+                            if (prev.mid !== undefined) {
+                                // document.getElementById(`arr-${prev.mid}`).classList.add('processed');
+                            }
+                        });
+                    }
+                }
+            }
+            
+            updateViewBox();
+        }
+
+        function updateViewBox() {
+            const svg = document.getElementById('svg');
+            const bbox = document.getElementById('main-group').getBBox();
+            if (bbox.width === 0) return;
+            
+            const padding = 50;
+            const vbX = bbox.x - padding;
+            const vbY = bbox.y - padding;
+            const vbW = bbox.width + padding * 2;
+            const vbH = bbox.height + padding * 2;
+            
+            // svg.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                const step = steps[currentStep];
+                document.getElementById('status').textContent = step.status;
+                draw();
+            } else {
+                document.getElementById('nextBtn').disabled = true;
+                document.getElementById('status').textContent = "转换完成！一棵完美的平衡BST诞生了！";
+            }
+        }
+
+        function reset() {
+            currentStep = -1;
+            steps = generateSteps();
+            document.getElementById('status').textContent = "点击“下一步”开始转换";
+            document.getElementById('nextBtn').disabled = false;
+            initArray();
+            draw();
+        }
+
+        // Zoom functions
+        function zoomIn() { scale *= 1.2; draw(); }
+        function zoomOut() { scale /= 1.2; draw(); }
+        function resetZoom() { scale = 1; translateX = 0; translateY = 0; draw(); }
+
+        // Dragging logic
+        let isDragging = false;
+        let startX, startY;
+        const svg = document.getElementById('svg');
+
+        svg.addEventListener('mousedown', e => {
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (isDragging) {
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                draw();
+            }
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        reset();
+    </script>
+</body>
+</html>

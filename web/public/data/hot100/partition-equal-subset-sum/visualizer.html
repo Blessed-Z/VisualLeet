@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>416. 分割等和子集 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 900px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .nums-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .num-token {
+            padding: 8px 16px;
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-family: monospace;
+            transition: all 0.3s ease;
+        }
+
+        .num-token.active {
+            background: var(--amber-yellow);
+            color: black;
+            transform: scale(1.1);
+            font-weight: bold;
+        }
+
+        .bitset-container {
+            width: 100%;
+            overflow-x: auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .bitset-row {
+            display: flex;
+            gap: 2px;
+            min-width: max-content;
+        }
+
+        .bit-cell {
+            width: 25px;
+            height: 35px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #30363d;
+            font-size: 10px;
+            transition: all 0.2s;
+            background: #0d1117;
+        }
+
+        .bit-cell.possible { background: var(--emerald-green); color: black; border-color: var(--emerald-green); }
+        .bit-cell.target { border: 2px solid var(--rose-red); }
+        .bit-cell.newly-possible { background: var(--amber-yellow); color: black; animation: pop 0.3s ease-out; }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        .bit-index { margin-top: 5px; font-size: 8px; color: #8b949e; }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin: 15px 0;
+            line-height: 1.5;
+        }
+
+        .target-box {
+            padding: 10px 20px;
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid var(--rose-red);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>416. 分割等和子集 (Partition Equal Subset Sum)</h2>
+    
+    <div class="target-box" id="targetInfo">目标：找到和为 - 的子集</div>
+
+    <div class="visualization-area">
+        <div class="nums-row" id="numsRow"></div>
+        <div class="bitset-container">
+            <div class="bitset-row" id="bitsetRow"></div>
+        </div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始，当前已能凑出和：0</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const nums = [1, 5, 11, 5];
+    const total = nums.reduce((a, b) => a + b, 0);
+    const target = total / 2;
+    let possibleSums = new Set([0]);
+    let i = 0;
+
+    function init() {
+        const numsRow = document.getElementById('numsRow');
+        numsRow.innerHTML = '';
+        nums.forEach((num, idx) => {
+            const token = document.createElement('div');
+            token.className = 'num-token';
+            token.id = `token-${idx}`;
+            token.textContent = num;
+            numsRow.appendChild(token);
+        });
+
+        document.getElementById('targetInfo').textContent = `总和 ${total}，目标一半 ${target}`;
+
+        renderBitset([]);
+        
+        i = 0;
+        possibleSums = new Set([0]);
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '准备就绪。从重量 0 开始出发！';
+    }
+
+    function renderBitset(newlyAdded) {
+        const bitsetRow = document.getElementById('bitsetRow');
+        bitsetRow.innerHTML = '';
+        for (let s = 0; s <= target + 2; s++) {
+            const cell = document.createElement('div');
+            cell.className = 'bit-cell';
+            if (possibleSums.has(s)) cell.classList.add('possible');
+            if (newlyAdded.includes(s)) cell.classList.add('newly-possible');
+            if (s === target) cell.classList.add('target');
+            
+            cell.textContent = possibleSums.has(s) || newlyAdded.includes(s) ? '1' : '0';
+            
+            const indexLabel = document.createElement('div');
+            indexLabel.className = 'bit-index';
+            indexLabel.textContent = s;
+            cell.appendChild(indexLabel);
+            
+            bitsetRow.appendChild(cell);
+        }
+    }
+
+    function next() {
+        if (i >= nums.length) return;
+
+        const x = nums[i];
+        document.querySelectorAll('.num-token').forEach(t => t.classList.remove('active'));
+        document.getElementById(`token-${i}`).classList.add('active');
+
+        const newSums = [];
+        const nextPossible = new Set(possibleSums);
+        
+        possibleSums.forEach(s => {
+            if (s + x <= target + 2) {
+                if (!possibleSums.has(s + x)) {
+                    newSums.push(s + x);
+                    nextPossible.add(s + x);
+                }
+            }
+        });
+
+        possibleSums = nextPossible;
+        renderBitset(newSums);
+
+        const status = document.getElementById('status');
+        status.textContent = `放入重量为 ${x} 的金币。新增可能重量：${newSums.length > 0 ? newSums.join(', ') : '无'}`;
+
+        if (possibleSums.has(target)) {
+            status.textContent += " ✨ 目标达成！可以平分！";
+            document.getElementById('nextBtn').disabled = true;
+            return;
+        }
+
+        i++;
+        if (i >= nums.length) {
+            document.getElementById('nextBtn').disabled = true;
+            status.textContent += "。遍历结束，无法凑出目标。";
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

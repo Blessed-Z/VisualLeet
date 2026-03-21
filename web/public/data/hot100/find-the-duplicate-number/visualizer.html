@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>287. 寻找重复数 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 900px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .array-display {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #1c2128;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .cell-idx { font-size: 10px; color: #8b949e; margin-top: 4px; }
+        .cell-val { font-size: 20px; font-weight: bold; margin-top: 5px; }
+
+        .cell.slow-active { border: 2px solid var(--emerald-green); background: rgba(16, 185, 129, 0.1); }
+        .cell.fast-active { border: 2px solid var(--rose-red); transform: scale(1.1); box-shadow: 0 0 15px rgba(244, 63, 94, 0.3); }
+        .cell.both-active { border: 2px solid var(--amber-yellow); background: rgba(245, 158, 11, 0.2); }
+
+        .pointer-label {
+            position: absolute;
+            bottom: -25px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .slow-label { color: var(--emerald-green); }
+        .fast-label { color: var(--rose-red); }
+
+        .status-text {
+            height: 80px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .phase-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(168, 85, 247, 0.2);
+            color: var(--primary-purple);
+            font-size: 14px;
+            margin-bottom: 20px;
+            border: 1px solid var(--primary-purple);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>287. 寻找重复数 (Find the Duplicate Number)</h2>
+    
+    <div class="visualization-area">
+        <div class="phase-badge" id="phaseBadge">第一阶段：寻找相遇点</div>
+        
+        <div class="array-display" id="arrayDisplay"></div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const nums = [1, 3, 4, 2, 2];
+    let slow = 0;
+    let fast = 0;
+    let phase = 1; // 1: meeting, 2: entrance
+    let hasStarted = false;
+
+    function init() {
+        const display = document.getElementById('arrayDisplay');
+        display.innerHTML = '';
+        nums.forEach((num, idx) => {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `cell-${idx}`;
+            
+            const idxDiv = document.createElement('div');
+            idxDiv.className = 'cell-idx';
+            idxDiv.textContent = idx;
+            
+            const valDiv = document.createElement('div');
+            valDiv.className = 'cell-val';
+            valDiv.textContent = num;
+            
+            cell.appendChild(idxDiv);
+            cell.appendChild(valDiv);
+            display.appendChild(cell);
+        });
+
+        slow = 0;
+        fast = 0;
+        phase = 1;
+        hasStarted = false;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('phaseBadge').textContent = '第一阶段：寻找相遇点';
+        document.getElementById('status').textContent = '准备就绪。初始位置都在下标 0。';
+        renderPointers();
+    }
+
+    function renderPointers() {
+        document.querySelectorAll('.cell').forEach(c => c.className = 'cell');
+        const slowCell = document.getElementById(`cell-${slow}`);
+        const fastCell = document.getElementById(`cell-${fast}`);
+
+        if (slow === fast && hasStarted) {
+            slowCell.classList.add('both-active');
+        } else {
+            slowCell.classList.add('slow-active');
+            fastCell.classList.add('fast-active');
+        }
+    }
+
+    function next() {
+        hasStarted = true;
+        const status = document.getElementById('status');
+
+        if (phase === 1) {
+            // First jump
+            slow = nums[slow];
+            fast = nums[nums[fast]];
+            
+            status.innerHTML = `乌龟跳到 <b>nums[${slow}]</b>，兔子连跳到 <b>nums[${fast}]</b>`;
+            
+            if (slow === fast) {
+                status.innerHTML += `<br>💥 <b>相遇了！</b> 发现环在附近。进入第二阶段。`;
+                phase = 2;
+                slow = 0; // Reset slow to start
+                document.getElementById('phaseBadge').textContent = '第二阶段：寻找环入口';
+            }
+        } else {
+            // Second stage jump
+            const oldSlow = slow;
+            const oldFast = fast;
+            slow = nums[slow];
+            fast = nums[fast];
+            
+            status.innerHTML = `乌龟从 ${oldSlow} 移到 <b>${slow}</b>，兔子从 ${oldFast} 移到 <b>${fast}</b>`;
+            
+            if (slow === fast) {
+                status.innerHTML = `🎉 <b>再次碰头！</b> 相遇点下标为 <b>${slow}</b>。<br>重复的数字就是: <b>${slow}</b>`;
+                document.getElementById('nextBtn').disabled = true;
+            }
+        }
+
+        renderPointers();
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

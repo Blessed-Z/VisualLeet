@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .string-container {
+            display: flex; gap: 5px; background: var(--box-bg); padding: 20px; border-radius: 15px;
+            border: 2px solid #475569; position: relative; flex-wrap: wrap; justify-content: center;
+        }
+
+        .char-box {
+            width: 35px; height: 45px; background: #334155; border: 1px solid #475569;
+            border-radius: 6px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.1rem; transition: all 0.3s; position: relative;
+        }
+        .char-box.current { border-color: var(--amber); transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
+        .char-box.in-range { background: rgba(139, 92, 246, 0.2); border-color: var(--purple); }
+        .char-box.last-occurrence { border-bottom: 3px solid var(--rose); }
+        .char-box.cut { border-right: 4px solid var(--emerald); margin-right: 15px; }
+
+        .partition-results { display: flex; gap: 10px; margin-top: 20px; }
+        .part-badge {
+            background: var(--emerald); padding: 5px 15px; border-radius: 20px;
+            font-weight: bold; font-size: 0.9rem; animation: popIn 0.3s;
+        }
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+        .legend { display: flex; gap: 20px; font-size: 0.8rem; color: #94a3b8; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 20px; }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">准备划分字母区间！同样的字母必须在一段里。</div>
+        
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: var(--rose);"></div> 最后出现点</div>
+            <div class="legend-item"><div class="dot" style="background: var(--purple);"></div> 当前探测范围</div>
+            <div class="legend-item"><div class="dot" style="background: var(--emerald);"></div> 切割点</div>
+        </div>
+
+        <div class="string-container" id="string-area"></div>
+
+        <div class="partition-results" id="results-area"></div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">走一步</button>
+        </div>
+    </div>
+
+    <script>
+        const s = "ababcbacadefegdehijhklij";
+        const last = {};
+        for(let i=0; i<s.length; i++) last[s[i]] = i;
+
+        let step = 0;
+        let start = 0;
+        let end = 0;
+        let results = [];
+
+        function init() {
+            const area = document.getElementById('string-area');
+            area.innerHTML = '';
+            s.split('').forEach((c, i) => {
+                const box = document.createElement('div');
+                box.className = 'char-box';
+                box.id = `char-${i}`;
+                if (last[c] === i) box.classList.add('last-occurrence');
+                box.innerText = c;
+                area.appendChild(box);
+            });
+            document.getElementById('results-area').innerHTML = '';
+        }
+
+        function nextStep() {
+            if (step >= s.length) return;
+            const status = document.getElementById('status');
+            const char = s[step];
+
+            // 1. Mark current
+            document.querySelectorAll('.char-box').forEach(b => b.classList.remove('current'));
+            const currentBox = document.getElementById(`char-${step}`);
+            currentBox.classList.add('current');
+
+            // 2. Update End
+            const charLastPos = last[char];
+            if (charLastPos > end) {
+                end = charLastPos;
+                status.innerText = `遇到字母 ${char}，它最后出现在 ${end}。我们将边界延长到这里。`;
+            } else {
+                status.innerText = `遇到字母 ${char}，它的家族成员都在目前的边界 ${end} 之内。`;
+            }
+
+            // 3. Mark range
+            for(let i=start; i<=end; i++) {
+                document.getElementById(`char-${i}`).classList.add('in-range');
+            }
+
+            // 4. Cut?
+            if (step === end) {
+                const len = end - start + 1;
+                status.innerText = `到边界了！第 ${start} 到 ${end} 格这一段，全家人都在齐了！咔嚓！`;
+                currentBox.classList.add('cut');
+                results.push(len);
+                addBadge(len);
+                start = step + 1;
+            }
+
+            step++;
+            if (step === s.length) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerText = "划分完毕！全部段落：[" + results.join(', ') + "]";
+            }
+        }
+
+        function addBadge(len) {
+            const badge = document.createElement('div');
+            badge.className = 'part-badge';
+            badge.innerText = `长度 ${len}`;
+            document.getElementById('results-area').appendChild(badge);
+        }
+
+        function reset() {
+            step = 0; start = 0; end = 0; results = [];
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "准备划分字母区间！同样的字母必须在一段里。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "id": 142,
+  "title": "142. 环形链表 II",
+  "slug": "linked-list-cycle-ii",
+  "link": "https://leetcode.cn/problems/linked-list-cycle-ii/",
+  "difficulty": "Medium",
+  "description": "给定一个链表的头节点  head ，返回链表开始入环的第一个节点。 如果链表无环，则返回 null。",
+  "solutions": [
+    {
+      "name": "快慢指针 + 入口查找 (最优)",
+      "file": "detect-cycle.py",
+      "time": "O(N)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

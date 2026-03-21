@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>24. 两两交换链表中的节点 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1000px;
+            text-align: center;
+        }
+
+        .status-box {
+            background-color: var(--node-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            border-left: 5px solid var(--primary-purple);
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            line-height: 1.5;
+        }
+
+        .visualization-area {
+            position: relative;
+            height: 350px;
+            margin-bottom: 30px;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .list-row {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .node-group {
+            display: flex;
+            align-items: center;
+            position: relative;
+            width: 100px;
+            justify-content: center;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .node {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background-color: var(--node-bg);
+            border: 2px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .node.dummy { border-style: dashed; border-color: #8b949e; color: #8b949e; }
+        .node.node1 { border-color: var(--rose-red); color: var(--rose-red); }
+        .node.node2 { border-color: var(--amber); color: var(--amber); }
+        .node.active { box-shadow: 0 0 15px var(--primary-purple); border-color: var(--primary-purple); }
+
+        .arrow {
+            position: absolute;
+            right: -15px;
+            font-size: 18px;
+            color: #30363d;
+            z-index: 1;
+            transition: all 0.5s ease;
+        }
+
+        /* Pointers */
+        .pointer {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            border: 2px solid var(--primary-purple);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ptr-label {
+            position: absolute;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--primary-purple);
+            color: white;
+            top: -30px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 1em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .highlight-text { font-weight: bold; }
+        .red-text { color: var(--rose-red); }
+        .amber-text { color: var(--amber); }
+        .purple-text { color: var(--primary-purple); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🔄 两两交换链表中的节点</h1>
+        <div class="status-box" id="status">
+            准备开始！我们要两两交换链表中的节点。
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div id="ptr-prev" class="pointer"><span class="ptr-label">Prev</span></div>
+            <div class="list-row" id="list-container">
+                <!-- Nodes injected here -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const initialVals = [1, 2, 3, 4];
+        let vals = [...initialVals];
+        let step = 0;
+        let prevIdx = 0; // 0 is Dummy
+        let subStep = 0; // 0: Start, 1: Highlight, 2: Step1 (prev.next=node2), 3: Step2 (node1.next=node2.next), 4: Step3 (node2.next=node1), 5: MovePrev
+
+        function init() {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+            
+            // Dummy node
+            addNode(container, 'D', 'dummy', 0);
+            
+            // Actual nodes
+            vals.forEach((v, i) => {
+                addNode(container, v, '', i + 1);
+            });
+
+            prevIdx = 0;
+            subStep = 0;
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerHTML = "初始化完成。<b>Prev</b> 指向虚拟头节点 <b>Dummy</b>。";
+        }
+
+        function addNode(parent, val, className, id) {
+            const group = document.createElement('div');
+            group.className = 'node-group';
+            group.id = `group-${id}`;
+            
+            const node = document.createElement('div');
+            node.className = `node ${className}`;
+            node.innerText = val;
+            node.id = `node-${id}`;
+            
+            group.appendChild(node);
+            
+            if (id <= initialVals.length) {
+                const arrow = document.createElement('div');
+                arrow.className = 'arrow';
+                arrow.innerText = '→';
+                arrow.id = `arrow-${id}`;
+                group.appendChild(arrow);
+            }
+            
+            parent.appendChild(group);
+        }
+
+        function updateUI() {
+            const prevPtr = document.getElementById('ptr-prev');
+            const containerWidth = (initialVals.length + 1) * 100;
+            const startPos = -containerWidth / 2 + 50; 
+            
+            prevPtr.style.transform = `translateX(${startPos + (prevIdx * 100)}px)`;
+
+            // Reset node classes
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('node1', 'node2', 'active'));
+            
+            if (prevIdx + 2 <= vals.length) {
+                const n1Idx = prevIdx + 1;
+                const n2Idx = prevIdx + 2;
+                
+                if (subStep >= 1) {
+                    document.getElementById(`node-${n1Idx}`).classList.add('node1');
+                    document.getElementById(`node-${n2Idx}`).classList.add('node2');
+                }
+            }
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const n1Idx = prevIdx + 1;
+            const n2Idx = prevIdx + 2;
+
+            if (prevIdx + 2 > vals.length) {
+                status.innerHTML = "🎉 <b>完成！</b> 后面没有成对的节点可以交换了。";
+                document.getElementById('next-btn').disabled = true;
+                return;
+            }
+
+            switch(subStep) {
+                case 0: // Highlight Pair
+                    status.innerHTML = `发现一对需要交换的小朋友：<span class="red-text">Node1 (${vals[n1Idx-1]})</span> 和 <span class="amber-text">Node2 (${vals[n2Idx-1]})</span>。`;
+                    subStep = 1;
+                    break;
+                case 1: // Step 1: prev.next = node2
+                    status.innerHTML = `<span class="purple-text">步骤 1：</span> 让 <b>Prev</b> 的手指向 <span class="amber-text">Node2</span>。<br>此时链表看起来像：... -> Prev -> Node2`;
+                    // Visual hack: Swap text to simulate pointer change for simplicity in this flex layout
+                    // In a real pointer sim, we'd move elements, but swapping text is clearer for logic
+                    subStep = 2;
+                    break;
+                case 2: // Step 2: node1.next = node2.next
+                    status.innerHTML = `<span class="purple-text">步骤 2：</span> 让 <span class="red-text">Node1</span> 的手指向 <span class="amber-text">Node2</span> 后面的小朋友。`;
+                    subStep = 3;
+                    break;
+                case 3: // Step 3: node2.next = node1
+                    status.innerHTML = `<span class="purple-text">步骤 3：</span> 让 <span class="amber-text">Node2</span> 的手指向 <span class="red-text">Node1</span>。<br><b>交换完成！</b>`;
+                    
+                    // Physical Swap in UI
+                    const node1 = document.getElementById(`node-${n1Idx}`);
+                    const node2 = document.getElementById(`node-${n2Idx}`);
+                    const tmp = node1.innerText;
+                    node1.innerText = node2.innerText;
+                    node2.innerText = tmp;
+                    
+                    // Update internal data
+                    const tmpVal = vals[n1Idx-1];
+                    vals[n1Idx-1] = vals[n2Idx-1];
+                    vals[n2Idx-1] = tmpVal;
+                    
+                    subStep = 4;
+                    break;
+                case 4: // Move Prev
+                    status.innerHTML = `交换结束，<b>Prev</b> 向前移动两个位置，去找下一对。`;
+                    prevIdx += 2;
+                    subStep = 0;
+                    break;
+            }
+            updateUI();
+        }
+
+        function reset() {
+            vals = [...initialVals];
+            init();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

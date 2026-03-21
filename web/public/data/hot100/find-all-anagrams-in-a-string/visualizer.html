@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --window-color: rgba(167, 139, 250, 0.1);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .string-display { position: relative; display: flex; gap: 6px; margin-top: 40px; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 16px; }
+        .char-box { width: 35px; height: 35px; border: 1px solid #3f3f46; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; background: #18181b; transition: all 0.3s; position: relative; z-index: 10; }
+        
+        #window-overlay {
+            position: absolute; height: 45px; top: 10px;
+            background: var(--window-color); border: 2px solid var(--primary-violet);
+            border-radius: 10px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5; box-shadow: 0 0 15px rgba(167, 139, 250, 0.2);
+        }
+
+        .counters { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 600px; margin-top: 10px; }
+        .counter-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 20px; }
+        .counter-title { font-size: 0.65rem; font-weight: 900; color: #71717a; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.05em; text-align: center; }
+        .grid-26 { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; }
+        .letter-slot { aspect-ratio: 1; border: 1px solid #27272a; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.6rem; transition: all 0.2s; }
+        .letter-slot.active { background: rgba(167, 139, 250, 0.2); border-color: var(--primary-violet); }
+        .count-num { font-weight: 900; color: var(--primary-emerald); }
+
+        .results { width: 100%; max-width: 600px; display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+        .res-item { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--primary-emerald); padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; }
+
+        .controls { display: flex; gap: 16px; }
+        button { padding: 10px 28px; border-radius: 14px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！我们将使用 Counter 极简逻辑。</div>
+        </div>
+
+        <div class="string-display" id="string-display">
+            <div id="window-overlay"></div>
+        </div>
+
+        <div class="results" id="results"></div>
+
+        <div class="counters">
+            <div class="counter-card">
+                <div class="counter-title">目标配方 cnt_p (p: abc)</div>
+                <div class="grid-26" id="p-count-grid"></div>
+            </div>
+            <div class="counter-card">
+                <div class="counter-title">当前配方 cnt_s (Current Window)</div>
+                <div class="grid-26" id="s-count-grid"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const s = "cbaebabacd";
+        const p = "abc";
+        let right = 0;
+        let found = [];
+        const pCount = new Array(26).fill(0);
+        const sCount = new Array(26).fill(0);
+
+        for(let char of p) pCount[char.charCodeAt(0) - 97]++;
+
+        function init() {
+            const display = document.getElementById('string-display');
+            display.innerHTML = '<div id="window-overlay"></div>';
+            s.split('').forEach((c, i) => {
+                display.innerHTML += `<div class="char-box" id="char-${i}">${c}</div>`;
+            });
+            renderGrids();
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function renderGrids() {
+            const pGrid = document.getElementById('p-count-grid');
+            const sGrid = document.getElementById('s-count-grid');
+            pGrid.innerHTML = ''; sGrid.innerHTML = '';
+            for(let i=0; i<26; i++) {
+                const char = String.fromCharCode(97 + i);
+                pGrid.innerHTML += `<div class="letter-slot ${pCount[i]>0?'active':''}"><span>${char}</span><span class="count-num">${pCount[i]}</span></div>`;
+                sGrid.innerHTML += `<div class="letter-slot" id="s-slot-${i}"><span>${char}</span><span class="count-num" id="s-val-${i}">0</span></div>`;
+            }
+        }
+
+        function updateUI() {
+            const boxWidth = 35 + 6;
+            const overlay = document.getElementById('window-overlay');
+            const windowLen = p.length;
+            const left = right - windowLen + 1;
+
+            if (left < 0) {
+                overlay.style.width = `${(right + 1) * boxWidth - 6 + 10}px`;
+                overlay.style.left = `10px`;
+            } else {
+                overlay.style.width = `${windowLen * boxWidth - 6 + 10}px`;
+                overlay.style.left = `${10 + left * boxWidth}px`;
+            }
+
+            for(let i=0; i<26; i++) {
+                const slot = document.getElementById(`s-slot-${i}`);
+                const val = document.getElementById(`s-val-${i}`);
+                val.innerText = sCount[i];
+                if (sCount[i] > 0) slot.classList.add('active');
+                else slot.classList.remove('active');
+            }
+
+            document.getElementById('results').innerHTML = found.map(idx => `<div class="res-item">MATCH: ${idx}</div>`).join('');
+        }
+
+        function nextStep() {
+            if (right >= s.length) return;
+            const status = document.getElementById('status');
+            const char = s[right];
+            const windowLen = p.length;
+            const left = right - windowLen + 1;
+
+            // 1. cnt_s[c] += 1
+            sCount[char.charCodeAt(0) - 97]++;
+            status.innerHTML = `右指针吞进 <span class="highlight">${char}</span>，<span style="color:var(--primary-emerald)">cnt_s['${char}'] + 1</span>。`;
+
+            // 2. check match
+            if (left >= 0) {
+                if (checkMatch()) {
+                    found.push(left);
+                    status.innerHTML += `<br><span style="color:var(--primary-emerald)">两边 Counter 完全相等！找到异位词，起始索引: ${left}。</span>`;
+                }
+                // 3. cnt_s[s[left]] -= 1 (Prepare for next slide)
+                const outChar = s[left];
+                sCount[outChar.charCodeAt(0) - 97]--;
+                status.innerHTML += `<br>准备下移：吐出左边 <span class="highlight" style="color:var(--primary-rose)">${outChar}</span>，<span style="color:var(--primary-rose)">cnt_s['${outChar}'] - 1</span>。`;
+            } else {
+                status.innerHTML += `<br>网还没撑满，继续吃字母...`;
+            }
+
+            updateUI();
+            right++;
+
+            if (right === s.length) {
+                setTimeout(() => {
+                    status.innerHTML = `🎉 扫描完成！共找到 <span class="highlight">${found.length}</span> 个字母异位词。`;
+                    document.getElementById('next-btn').disabled = true;
+                }, 500);
+            }
+        }
+
+        function checkMatch() {
+            for(let i=0; i<26; i++) if(sCount[i] !== pCount[i]) return false;
+            return true;
+        }
+
+        function reset() {
+            right = 0; sCount.fill(0); found.length = 0;
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

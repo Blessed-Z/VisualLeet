@@ -1,0 +1,18 @@
+{
+  "id": 22,
+  "slug": "generate-parentheses",
+  "title": "括号生成",
+  "difficulty": "Medium",
+  "category": "回溯",
+  "tags": ["String", "Backtracking", "Dynamic Programming"],
+  "description": "数字 n 代表生成括号的对数，请你设计一个函数，用于能够生成所有可能的并且 有效的 括号组合。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "回溯剪枝法",
+      "time": "O(4^n / sqrt(n))",
+      "space": "O(n)"
+    }
+  ]
+}

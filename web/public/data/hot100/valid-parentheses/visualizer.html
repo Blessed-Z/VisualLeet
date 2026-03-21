@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>20. 有效的括号 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 1fr 300px; gap: 25px; min-height: 500px; }
+
+        /* Left Side: Input & Animation Area */
+        .viz-panel {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 30px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+        }
+
+        .input-sequence {
+            display: flex; gap: 10px; margin-bottom: 40px; font-size: 1.8em; font-family: monospace;
+        }
+        .char-token {
+            width: 50px; height: 60px; border: 2px solid #30363d; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.4s;
+            background: var(--node-bg);
+        }
+        .char-token.active { border-color: var(--amber); transform: translateY(10px); box-shadow: 0 0 15px var(--amber); }
+        .char-token.processed { opacity: 0.3; transform: scale(0.9); }
+
+        /* Right Side: Stack Panel */
+        .stack-container {
+            display: flex; flex-direction: column-reverse; align-items: center;
+            width: 150px; height: 350px; border: 4px solid #30363d; border-top: none;
+            border-radius: 0 0 20px 20px; background: rgba(22, 27, 34, 0.5);
+            padding: 10px; position: relative;
+        }
+        .stack-label { font-size: 0.8em; color: #8b949e; text-transform: uppercase; margin-bottom: 10px; }
+
+        .stack-item {
+            width: 100%; height: 50px; margin-bottom: 5px; border-radius: 8px;
+            background: var(--primary-purple); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5em; font-weight: bold; font-family: monospace;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .stack-item.pop-out { animation: popOut 0.3s forwards; }
+        @keyframes popOut { to { transform: scale(1.5); opacity: 0; } }
+
+        .stack-item.match-highlight { border: 3px solid var(--emerald-green); background: var(--emerald-green); }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧦 有效的括号：魔法口袋演示</h1>
+        <div class="status-box">
+            <div id="status">准备检查括号序列。序列: <span class="highlight-text">"{ [ ] }"</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">左括号进驻，右括号配对。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="viz-panel" id="viz">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+                
+                <div style="text-align: center; width: 100%;">
+                    <div style="font-size: 0.8em; color: #8b949e; margin-bottom: 15px;">输入序列 (Input)</div>
+                    <div class="input-sequence" id="input-container"></div>
+                </div>
+
+                <div id="feedback-icon" style="font-size: 5em; opacity: 0.1;">🔍</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <div class="stack-label">魔法口袋 (Stack)</div>
+                <div class="stack-container" id="stack-view"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const inputStr = "{[]}";
+        const mapping = {')': '(', ']': '[', '}': '{'};
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function generateSteps() {
+            steps = [];
+            let stack = [];
+            steps.push({ type: 'INIT', stack: [], charIdx: -1 });
+
+            for (let i = 0; i < inputStr.length; i++) {
+                const ch = inputStr[i];
+                if (ch in mapping) {
+                    // It's a right bracket
+                    const isMatch = stack.length > 0 && stack[stack.length - 1] === mapping[ch];
+                    steps.push({ type: 'RIGHT', ch, stack: [...stack], charIdx: i, isMatch });
+                    if (isMatch) {
+                        stack.pop();
+                        steps.push({ type: 'POP', ch, stack: [...stack], charIdx: i });
+                    } else {
+                        steps.push({ type: 'FAIL', ch, stack: [...stack], charIdx: i });
+                        return;
+                    }
+                } else {
+                    // It's a left bracket
+                    stack.push(ch);
+                    steps.push({ type: 'LEFT', ch, stack: [...stack], charIdx: i });
+                }
+            }
+            steps.push({ type: 'DONE', stack: [...stack], charIdx: -1, success: stack.length === 0 });
+        }
+
+        function render() {
+            const step = steps[currentStep];
+            if (!step) return;
+
+            document.getElementById('viz').style.transform = `scale(${zoomFactor})`;
+
+            // Render Input Sequence
+            const inputContainer = document.getElementById('input-container');
+            inputContainer.innerHTML = '';
+            for (let i = 0; i < inputStr.length; i++) {
+                const div = document.createElement('div');
+                div.className = 'char-token';
+                if (i === step.charIdx) div.className += ' active';
+                if (i < step.charIdx) div.className += ' processed';
+                div.innerText = inputStr[i];
+                inputContainer.appendChild(div);
+            }
+
+            // Render Stack
+            const stackView = document.getElementById('stack-view');
+            stackView.innerHTML = '';
+            step.stack.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'stack-item';
+                // If we're at a RIGHT step and it's the top item, maybe highlight?
+                if (step.type === 'RIGHT' && idx === step.stack.length - 1 && step.isMatch) {
+                    div.className += ' match-highlight';
+                }
+                div.innerText = item;
+                stackView.appendChild(div);
+            });
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+            const feedback = document.getElementById('feedback-icon');
+
+            if (step.type === 'INIT') {
+                status.innerHTML = `准备检查序列: <span class="highlight-text">"${inputStr}"</span>`;
+                subStatus.innerText = "口袋目前是空的。";
+                feedback.innerText = "🔍";
+            } else if (step.type === 'LEFT') {
+                status.innerHTML = `遇到左括号 <span style="color:var(--primary-purple); font-weight:bold;">'${step.ch}'</span>`;
+                subStatus.innerText = "把它塞进口袋里存着。";
+                feedback.innerText = "➕";
+            } else if (step.type === 'RIGHT') {
+                status.innerHTML = `遇到右括号 <span style="color:var(--amber); font-weight:bold;">'${step.ch}'</span>`;
+                if (step.isMatch) {
+                    subStatus.innerHTML = `正在检查口袋顶部... <span class="emerald">匹配成功！</span> 它和 '${mapping[step.ch]}' 是一对。`;
+                    feedback.innerText = "✨";
+                } else {
+                    subStatus.innerHTML = `正在检查口袋顶部... <span class="rose">匹配失败！</span> 它和顶部的括号对不上。`;
+                    feedback.innerText = "❌";
+                }
+            } else if (step.type === 'POP') {
+                status.innerHTML = `消消乐！一对括号抵消了。`;
+                subStatus.innerText = "从口袋里移除匹配好的左括号。";
+                feedback.innerText = "💨";
+            } else if (step.type === 'FAIL') {
+                status.innerHTML = `❌ <b>验证失败！</b>`;
+                subStatus.innerText = "这是一个无效的括号序列。";
+                feedback.innerText = "🚫";
+                document.getElementById('next-btn').disabled = true;
+            } else if (step.type === 'DONE') {
+                if (step.success) {
+                    status.innerHTML = `🎉 <b>全部分配成功！</b>`;
+                    subStatus.innerText = "口袋空空如也，所有的括号都完美配对了。";
+                    feedback.innerText = "✅";
+                } else {
+                    status.innerHTML = `❌ <b>最后检查失败！</b>`;
+                    subStatus.innerText = "所有的字符都看完了，但口袋里还剩有没配对的左括号。";
+                    feedback.innerText = "⚠️";
+                }
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+
+        generateSteps();
+        window.onload = render;
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "id": 39,
+  "slug": "combination-sum",
+  "title": "组合总和",
+  "difficulty": "Medium",
+  "category": "回溯",
+  "tags": ["Array", "Backtracking"],
+  "description": "给你一个 无重复元素 的整数数组 candidates 和一个目标整数 target ，找出 candidates 中可以使数字和为目标数 target 的 所有 不同组合 ，并以列表形式返回。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "排序剪枝回溯",
+      "time": "O(S)",
+      "space": "O(target)"
+    }
+  ]
+}

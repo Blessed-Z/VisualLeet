@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>169. 多数元素 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .nums-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .num-box {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            background: #1c2128;
+        }
+
+        .num-box.active { border: 2px solid var(--amber-yellow); transform: translateY(-5px); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3); }
+        .num-box.consumed { opacity: 0.2; }
+
+        .battle-stats {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .stat-card {
+            background: rgba(0,0,0,0.2);
+            padding: 15px 25px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat-label { font-size: 12px; color: #8b949e; margin-bottom: 5px; }
+        .stat-value { font-size: 28px; font-weight: bold; font-family: monospace; }
+        .stat-candidate { color: var(--primary-purple); }
+        .stat-count { color: var(--emerald-green); }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .flash-red { animation: flashRed 0.5s; }
+        .flash-green { animation: flashGreen 0.5s; }
+
+        @keyframes flashRed {
+            0% { color: var(--rose-red); transform: scale(1.2); }
+            100% { color: var(--emerald-green); transform: scale(1); }
+        }
+        @keyframes flashGreen {
+            0% { color: var(--amber-yellow); transform: scale(1.2); }
+            100% { color: var(--emerald-green); transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>169. 多数元素 (Majority Element)</h2>
+    
+    <div class="visualization-area">
+        <div class="nums-row" id="numsRow"></div>
+        
+        <div class="battle-stats">
+            <div class="stat-card">
+                <div class="stat-label">当前候选人</div>
+                <div class="stat-value stat-candidate" id="candidateDisplay">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">血量 (计数)</div>
+                <div class="stat-value stat-count" id="countDisplay">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始投票</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const nums = [2, 2, 1, 1, 1, 2, 2];
+    let candidate = null;
+    let count = 0;
+    let i = 0;
+
+    function init() {
+        const numsRow = document.getElementById('numsRow');
+        numsRow.innerHTML = '';
+        nums.forEach((num, idx) => {
+            const box = document.createElement('div');
+            box.className = 'num-box';
+            box.id = `num-${idx}`;
+            box.textContent = num;
+            numsRow.appendChild(box);
+        });
+
+        candidate = null;
+        count = 0;
+        i = 0;
+        document.getElementById('candidateDisplay').textContent = '-';
+        document.getElementById('countDisplay').textContent = '0';
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '准备就绪。';
+    }
+
+    function next() {
+        if (i >= nums.length) return;
+
+        const x = nums[i];
+        const status = document.getElementById('status');
+        const candDisp = document.getElementById('candidateDisplay');
+        const countDisp = document.getElementById('countDisplay');
+
+        // Reset highlights
+        document.querySelectorAll('.num-box').forEach(b => b.classList.remove('active'));
+        const currentBox = document.getElementById(`num-${i}`);
+        currentBox.classList.add('active');
+
+        if (count === 0) {
+            candidate = x;
+            count = 1;
+            status.innerHTML = `计数为 0，<b>${x}</b> 站出来成为新候选人！`;
+            candDisp.textContent = candidate;
+            countDisp.textContent = count;
+            countDisp.className = 'stat-value stat-count flash-green';
+        } else if (candidate === x) {
+            count++;
+            status.innerHTML = `遇到盟友 <b>${x}</b>，血量增加！当前：${count}`;
+            countDisp.textContent = count;
+            countDisp.className = 'stat-value stat-count flash-green';
+        } else {
+            count--;
+            status.innerHTML = `遇到对手 <b>${x}</b>，同归于尽！血量减少：${count}`;
+            countDisp.textContent = count;
+            countDisp.className = 'stat-value stat-count flash-red';
+        }
+
+        i++;
+        if (i >= nums.length) {
+            document.getElementById('nextBtn').disabled = true;
+            status.innerHTML += `<br>🎉 投票结束！最终获胜的候选人是: <b>${candidate}</b>`;
+            // Mark all as consumed
+            document.querySelectorAll('.num-box').forEach(b => b.classList.add('consumed'));
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

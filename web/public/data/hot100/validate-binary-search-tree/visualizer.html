@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>98. 验证二叉搜索树 可视化</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #121212;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #controls {
+            padding: 20px;
+            background-color: #1e1e1e;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        button {
+            background-color: #7b1fa2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #9c27b0;
+        }
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+        }
+        #canvas-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 600px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        .node circle {
+            fill: #1e1e1e;
+            stroke: #7b1fa2;
+            stroke-width: 3;
+            transition: all 0.5s;
+        }
+        .node text {
+            fill: white;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+        .halo {
+            fill: none;
+            stroke: rgba(255, 202, 40, 0.3);
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+            transition: all 0.5s;
+        }
+        .node.active circle {
+            stroke: #ffca28;
+            stroke-width: 5;
+            filter: drop-shadow(0 0 8px #ffca28);
+        }
+        .node.invalid circle {
+            stroke: #f44336;
+        }
+        .link {
+            stroke: #444;
+            stroke-width: 2;
+            fill: none;
+        }
+        .status-text {
+            margin: 20px;
+            font-size: 1.2rem;
+            color: #ffca28;
+            height: 1.5em;
+            text-align: center;
+        }
+        .range-text {
+            font-size: 12px;
+            fill: #ffca28;
+            text-anchor: middle;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: rgba(30, 30, 30, 0.8);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .zoom-controls button {
+            padding: 5px 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button onclick="reset()">⟲ 重置</button>
+        <button id="nextBtn" onclick="nextStep()">下一步</button>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”检查树的秩序</div>
+
+    <div id="canvas-container">
+        <svg id="svg">
+            <g id="main-group"></g>
+        </svg>
+        <div class="zoom-controls">
+            <button onclick="zoomIn()">+</button>
+            <button onclick="zoomOut()">-</button>
+            <button onclick="resetZoom()">⟲</button>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            val: 5,
+            left: {
+                val: 1,
+                left: null,
+                right: null
+            },
+            right: {
+                val: 4,
+                left: { val: 3, left: null, right: null },
+                right: { val: 6, left: null, right: null }
+            }
+        };
+
+        let steps = [];
+        let currentStep = -1;
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+
+        function generateSteps() {
+            const res = [];
+            const nodes = [];
+            
+            function traverse(node, lower, upper, x, y, spacing) {
+                if (!node) return;
+
+                const stepNode = {
+                    val: node.val,
+                    lower,
+                    upper,
+                    x, y,
+                    isValid: node.val > lower && node.val < upper
+                };
+                nodes.push(stepNode);
+
+                res.push({
+                    node: stepNode,
+                    lower, upper,
+                    status: `检查节点 ${node.val}，允许范围: (${lower === -Infinity ? '-∞' : lower}, ${upper === Infinity ? '+∞' : upper})`
+                });
+
+                if (!stepNode.isValid) {
+                    res.push({
+                        node: stepNode,
+                        status: `❌ 哔哔！节点 ${node.val} 不在范围内！BST 无效！`,
+                        final: true
+                    });
+                    return false;
+                }
+
+                if (node.left) {
+                    const leftValid = traverse(node.left, lower, node.val, x - spacing, y + 80, spacing / 2);
+                    if (leftValid === false) return false;
+                }
+                if (node.right) {
+                    const rightValid = traverse(node.right, node.val, upper, x + spacing, y + 80, spacing / 2);
+                    if (rightValid === false) return false;
+                }
+                return true;
+            }
+
+            traverse(treeData, -Infinity, Infinity, 400, 50, 150);
+            return res;
+        }
+
+        function drawTree(root, x, y, spacing, group) {
+            if (!root) return;
+
+            if (root.left) {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute('x1', x);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', x - spacing);
+                line.setAttribute('y2', y + 80);
+                line.setAttribute('class', 'link');
+                group.appendChild(line);
+                drawTree(root.left, x - spacing, y + 80, spacing / 2, group);
+            }
+
+            if (root.right) {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute('x1', x);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', x + spacing);
+                line.setAttribute('y2', y + 80);
+                line.setAttribute('class', 'link');
+                group.appendChild(line);
+                drawTree(root.right, x + spacing, y + 80, spacing / 2, group);
+            }
+
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute('class', 'node');
+            g.setAttribute('id', `node-${root.val}`);
+
+            const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            halo.setAttribute('cx', x);
+            halo.setAttribute('cy', y);
+            halo.setAttribute('r', 35);
+            halo.setAttribute('class', 'halo');
+            halo.setAttribute('style', 'display: none;');
+            halo.setAttribute('id', `halo-${root.val}`);
+            
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute('cx', x);
+            circle.setAttribute('cy', y);
+            circle.setAttribute('r', 20);
+            
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute('x', x);
+            text.setAttribute('y', y);
+            text.textContent = root.val;
+
+            const rangeText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            rangeText.setAttribute('x', x);
+            rangeText.setAttribute('y', y + 45);
+            rangeText.setAttribute('class', 'range-text');
+            rangeText.setAttribute('id', `range-${root.val}`);
+            
+            g.appendChild(halo);
+            g.appendChild(circle);
+            g.appendChild(text);
+            g.appendChild(rangeText);
+            group.appendChild(g);
+        }
+
+        function draw() {
+            const mainGroup = document.getElementById('main-group');
+            mainGroup.innerHTML = '';
+            mainGroup.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+            drawTree(treeData, 400, 50, 150, mainGroup);
+
+            // Highlight current step
+            if (currentStep >= 0) {
+                const step = steps[currentStep];
+                const nodeEl = document.getElementById(`node-${step.node.val}`);
+                const haloEl = document.getElementById(`halo-${step.node.val}`);
+                const rangeEl = document.getElementById(`range-${step.node.val}`);
+
+                if (nodeEl) {
+                    nodeEl.classList.add('active');
+                    if (!step.node.isValid) nodeEl.classList.add('invalid');
+                }
+                if (haloEl) haloEl.style.display = 'block';
+                if (rangeEl) {
+                    const l = step.lower === -Infinity ? '-∞' : step.lower;
+                    const u = step.upper === Infinity ? '+∞' : step.upper;
+                    rangeEl.textContent = `(${l}, ${u})`;
+                }
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                const step = steps[currentStep];
+                document.getElementById('status').textContent = step.status;
+                draw();
+                if (step.final && !step.node.isValid) {
+                    document.getElementById('nextBtn').disabled = true;
+                }
+            } else {
+                document.getElementById('nextBtn').disabled = true;
+                document.getElementById('status').textContent = "检查完毕！";
+            }
+        }
+
+        function reset() {
+            currentStep = -1;
+            steps = generateSteps();
+            document.getElementById('status').textContent = "点击“下一步”检查树的秩序";
+            document.getElementById('nextBtn').disabled = false;
+            draw();
+        }
+
+        function zoomIn() { scale *= 1.2; draw(); }
+        function zoomOut() { scale /= 1.2; draw(); }
+        function resetZoom() { scale = 1; translateX = 0; translateY = 0; draw(); }
+
+        let isDragging = false;
+        let startX, startY;
+        const svg = document.getElementById('svg');
+        svg.addEventListener('mousedown', e => { isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY; });
+        window.addEventListener('mousemove', e => { if (isDragging) { translateX = e.clientX - startX; translateY = e.clientY - startY; draw(); } });
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        reset();
+    </script>
+</body>
+</html>

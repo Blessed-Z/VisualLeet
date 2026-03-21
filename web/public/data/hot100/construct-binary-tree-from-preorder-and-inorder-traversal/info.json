@@ -1,0 +1,18 @@
+{
+  "id": 105,
+  "title": "从前序与中序遍历序列构造二叉树",
+  "slug": "construct-binary-tree-from-preorder-and-inorder-traversal",
+  "difficulty": "Medium",
+  "category": "二叉树",
+  "tags": ["Array", "Hash Table", "Divide and Conquer", "Tree", "Binary Tree"],
+  "description": "给定两个整数数组 preorder 和 inorder ，其中 preorder 是二叉树的先序遍历， inorder 是同一棵树的中序遍历，请构造二叉树并返回其根节点。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "递归构造法",
+      "time": "O(N)",
+      "space": "O(N)"
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --primary-amber: #fbbf24;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .array-display { position: relative; display: flex; gap: 12px; margin-top: 40px; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 20px; }
+        
+        .slot { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .idx-label { font-size: 0.65rem; color: #71717a; font-mono; }
+        .num-box { 
+            width: 55px; height: 55px; border: 1.5px solid #333; border-radius: 14px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 1.2rem; font-weight: bold; background: #111; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+        
+        .num-box.active { border-color: var(--primary-violet); background: rgba(167, 139, 250, 0.1); transform: scale(1.1); box-shadow: 0 0 20px rgba(167, 139, 250, 0.3); }
+        .num-box.correct { border-color: var(--primary-emerald); color: var(--primary-emerald); background: rgba(16, 185, 129, 0.05); }
+        .num-box.wrong { border-color: var(--primary-rose); color: var(--primary-rose); background: rgba(251, 113, 133, 0.1); animation: shake 0.5s; }
+        .num-box.swapping { transform: translateY(-20px); opacity: 0.7; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .controls { display: flex; gap: 16px; margin-top: 20px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .target-hint { font-size: 0.6rem; color: #444; position: absolute; top: -18px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！要把数字 x 送到索引 x-1 的位置上。</div>
+        </div>
+
+        <div class="array-display" id="array-container">
+            <!-- Slots will be injected -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [3, 4, -1, 1];
+        let currentI = 0;
+        let phase = 'sort'; // 'sort' or 'scan'
+        let scanIdx = 0;
+
+        function init() {
+            const container = document.getElementById('array-container');
+            container.innerHTML = '';
+            nums.forEach((n, i) => {
+                const slot = document.createElement('div');
+                slot.className = 'slot';
+                slot.innerHTML = `
+                    <div class="target-hint">需放: ${i+1}</div>
+                    <div class="num-box" id="box-${i}">${n}</div>
+                    <div class="idx-label">索引 ${i}</div>
+                `;
+                container.appendChild(slot);
+            });
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI() {
+            nums.forEach((n, idx) => {
+                const box = document.getElementById(`box-${idx}`);
+                box.innerText = n;
+                box.className = 'num-box';
+                
+                if (phase === 'sort' && idx === currentI) {
+                    box.classList.add('active');
+                }
+                
+                if (phase === 'scan') {
+                    if (idx < scanIdx) {
+                        if (n === idx + 1) box.classList.add('correct');
+                        else box.classList.add('wrong');
+                    } else if (idx === scanIdx) {
+                        box.classList.add('active');
+                    }
+                } else {
+                    // During sort phase, mark correct ones
+                    if (n === idx + 1) box.classList.add('correct');
+                }
+            });
+        }
+
+        async function nextStep() {
+            const status = document.getElementById('status');
+            
+            if (phase === 'sort') {
+                if (currentI >= nums.length) {
+                    phase = 'scan';
+                    status.innerHTML = `第一阶段（调座位）完成！现在开始<span class="highlight">查岗</span>。`;
+                    updateUI();
+                    return;
+                }
+
+                const n = nums[currentI];
+                if (n >= 1 && n <= nums.length && n !== nums[n - 1]) {
+                    const targetIdx = n - 1;
+                    status.innerHTML = `位置 ${currentI} 坐着 <span class="highlight">${n}</span>。<br>它应该去索引 <span class="highlight">${targetIdx}</span>。交换！`;
+                    
+                    // Visual swap effect
+                    document.getElementById(`box-${currentI}`).classList.add('swapping');
+                    document.getElementById(`box-${targetIdx}`).classList.add('swapping');
+                    
+                    await new Promise(r => setTimeout(r, 400));
+                    
+                    [nums[currentI], nums[targetIdx]] = [nums[targetIdx], nums[currentI]];
+                    updateUI();
+                    // stay on currentI for while loop
+                } else {
+                    status.innerHTML = `位置 ${currentI} 的小朋友坐对了，或者他没家可回。看下一个。`;
+                    currentI++;
+                    updateUI();
+                }
+            } else {
+                // Scan phase
+                if (scanIdx >= nums.length) {
+                    status.innerHTML = `大家都各就各位了！缺失的是 <span class="highlight" style="color:var(--primary-emerald)">${nums.length + 1}</span>。`;
+                    document.getElementById('next-btn').disabled = true;
+                    return;
+                }
+
+                const n = nums[scanIdx];
+                if (n !== scanIdx + 1) {
+                    status.innerHTML = `<span style="color:var(--primary-rose)">抓到啦！</span> 索引 ${scanIdx} 应该坐 ${scanIdx + 1} 号，但坐的是 ${n}。<br>所以缺失的第一个正数是 <span class="highlight" style="color:var(--primary-rose)">${scanIdx + 1}</span>！`;
+                    document.getElementById(`box-${scanIdx}`).classList.add('wrong');
+                    document.getElementById('next-btn').disabled = true;
+                } else {
+                    status.innerHTML = `索引 ${scanIdx} 坐的是 ${n}。是对的！继续查。`;
+                    scanIdx++;
+                    updateUI();
+                }
+            }
+        }
+
+        function reset() {
+            nums.length = 0;
+            nums.push(3, 4, -1, 1);
+            currentI = 0;
+            scanIdx = 0;
+            phase = 'sort';
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

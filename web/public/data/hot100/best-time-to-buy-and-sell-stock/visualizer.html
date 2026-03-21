@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 800px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .chart-container {
+            width: 100%; height: 350px; background: var(--box-bg); border: 2px solid #475569;
+            border-radius: 20px; position: relative; padding: 40px 20px; display: flex; align-items: flex-end; justify-content: space-around;
+        }
+
+        .bar {
+            width: 40px; background: #334155; border-radius: 8px 8px 0 0; position: relative;
+            transition: all 0.5s; display: flex; justify-content: center;
+        }
+        .bar.active { border: 2px solid var(--amber); }
+        .bar.min { background: var(--purple); box-shadow: 0 0 15px var(--purple); }
+        .bar .val { position: absolute; top: -30px; font-weight: bold; }
+
+        .stats { display: flex; gap: 40px; }
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; }
+        .stat-val { font-size: 1.8rem; font-weight: bold; }
+        .stat-val.profit { color: var(--emerald); }
+        .stat-val.min { color: var(--purple); }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">准备开始寻宝之旅...</div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">历史最低价</div>
+                <div class="stat-val min" id="min-val">∞</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">最大利润</div>
+                <div class="stat-val profit" id="profit-val">0</div>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chart"></div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">下一天</button>
+        </div>
+    </div>
+
+    <script>
+        const prices = [7, 1, 5, 3, 6, 4];
+        let step = 0;
+        let minPrice = Infinity;
+        let maxProfit = 0;
+
+        function init() {
+            const chart = document.getElementById('chart');
+            chart.innerHTML = '';
+            prices.forEach((p, i) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.id = `bar-${i}`;
+                bar.style.height = `${p * 30}px`;
+                bar.innerHTML = `<span class="val">${p}</span>`;
+                chart.appendChild(bar);
+            });
+        }
+
+        function nextStep() {
+            if (step >= prices.length) return;
+            const status = document.getElementById('status');
+            const price = prices[step];
+
+            // Reset current active
+            document.querySelectorAll('.bar').forEach(b => b.classList.remove('active'));
+            const currentBar = document.getElementById(`bar-${step}`);
+            currentBar.classList.add('active');
+
+            if (price < minPrice) {
+                minPrice = price;
+                document.querySelectorAll('.bar').forEach(b => b.classList.remove('min'));
+                currentBar.classList.add('min');
+                status.innerText = `第 ${step+1} 天：价格 ${price} 是目前最便宜的！记在笔记本上。`;
+            } else {
+                const currentProfit = price - minPrice;
+                status.innerText = `第 ${step+1} 天：价格 ${price}。如果今天卖，赚 ${currentProfit}。`;
+                if (currentProfit > maxProfit) {
+                    maxProfit = currentProfit;
+                    status.innerText += ` 破纪录啦！存进存钱罐。`;
+                }
+            }
+
+            document.getElementById('min-val').innerText = minPrice;
+            document.getElementById('profit-val').innerText = maxProfit;
+            
+            step++;
+            if (step === prices.length) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerText = `旅程结束！存钱罐里最后剩下：${maxProfit}`;
+            }
+        }
+
+        function reset() {
+            step = 0; minPrice = Infinity; maxProfit = 0;
+            document.getElementById('min-val').innerText = '∞';
+            document.getElementById('profit-val').innerText = '0';
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "准备开始寻宝之旅...";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

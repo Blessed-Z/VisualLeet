@@ -1,0 +1,17 @@
+{
+  "id": 49,
+  "title": "49. 字母异位词分组",
+  "slug": "group-anagrams",
+  "link": "https://leetcode.cn/problems/group-anagrams/",
+  "difficulty": "Medium",
+  "description": "给你一个字符串数组，请你将 字母异位词 组合在一起。可以按任意顺序返回结果列表。",
+  "solutions": [
+    {
+      "name": "排序哈希 (最优)",
+      "file": "hash-map.py",
+      "time": "O(NK log K)",
+      "space": "O(NK)",
+      "is_optimal": true
+    }
+  ]
+}

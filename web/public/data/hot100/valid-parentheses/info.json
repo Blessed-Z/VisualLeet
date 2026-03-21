@@ -1,0 +1,18 @@
+{
+  "id": 20,
+  "slug": "valid-parentheses",
+  "title": "有效的括号",
+  "difficulty": "Easy",
+  "category": "栈",
+  "tags": ["Stack", "String"],
+  "description": "给定一个只包括 '('，')'，'{'，'}'，'['，']' 的字符串 s ，判断字符串是否有效。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "栈匹配法",
+      "time": "O(N)",
+      "space": "O(N)"
+    }
+  ]
+}

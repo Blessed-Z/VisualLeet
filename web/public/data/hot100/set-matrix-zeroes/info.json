@@ -1,0 +1,17 @@
+{
+  "id": 73,
+  "title": "73. 矩阵置零",
+  "slug": "set-matrix-zeroes",
+  "link": "https://leetcode.cn/problems/set-matrix-zeroes/",
+  "difficulty": "Medium",
+  "description": "给定一个 m x n 的矩阵，如果一个元素为 0 ，则将其所在行和列的所有元素都设为 0 。请使用 原地 算法。",
+  "solutions": [
+    {
+      "name": "首行首列标记法 (最优)",
+      "file": "in-place.py",
+      "time": "O(MN)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

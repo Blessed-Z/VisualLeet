@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>对称二叉树可视化</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        #container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 900px;
+            align-items: center;
+        }
+        #viz-area {
+            width: 100%;
+            height: 500px;
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            border: 1px solid #30363d;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(13, 17, 23, 0.8);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            z-index: 100;
+        }
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            padding: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: #161b22 !important;
+            color: #10b981 !important;
+            border: 1px solid #30363d !important;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .zoom-btn:hover {
+            background: #30363d !important;
+            color: #a855f7 !important;
+            border-color: #a855f7 !important;
+        }
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+        }
+        
+        .node circle {
+            fill: #1e293b;
+            stroke: #475569;
+            stroke-width: 2px;
+            transition: all 0.3s;
+        }
+        .node text {
+            fill: #e2e8f0;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+        .node.active-p circle {
+            stroke: #a855f7;
+            stroke-width: 4px;
+            fill: #3b0764;
+        }
+        .node.active-q circle {
+            stroke: #f59e0b;
+            stroke-width: 4px;
+            fill: #451a03;
+        }
+        .node.match circle {
+            fill: #064e3b;
+            stroke: #10b981;
+        }
+        .link {
+            stroke: #475569;
+            stroke-width: 2px;
+            fill: none;
+        }
+        #controls {
+            display: flex;
+            gap: 15px;
+        }
+        button {
+            background-color: #a855f7;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #9333ea; }
+        button:disabled { background-color: #30363d; color: #8b949e; cursor: not-allowed; }
+
+        #status-text {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            color: #f43f5e;
+            font-weight: bold;
+            text-align: center;
+        }
+        .mirror-line {
+            stroke: #475569;
+            stroke-width: 2px;
+            stroke-dasharray: 5,5;
+        }
+        h3 { color: #a855f7; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h3>找不同：检查镜像双胞胎</h3>
+        <div id="status-text">点击“下一步”开始同步检查</div>
+        <div id="viz-area">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(0.1)" title="放大">+</button>
+                <button class="zoom-btn" onclick="changeZoom(-0.1)" title="缩小">-</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="重置">⟲</button>
+            </div>
+            <svg id="tree-svg"></svg>
+        </div>
+        <div id="controls">
+            <button id="reset-btn">重置</button>
+            <button id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            id: 1, val: 1,
+            left: {
+                id: 2, val: 2,
+                left: { id: 4, val: 3, left: null, right: null },
+                right: { id: 5, val: 4, left: null, right: null }
+            },
+            right: {
+                id: 3, val: 2,
+                left: { id: 6, val: 4, left: null, right: null },
+                right: { id: 7, val: 3, left: null, right: null }
+            }
+        };
+
+        let nodes = [];
+        let links = [];
+        let callStack = [];
+        let matchedNodes = new Set();
+        let finished = false;
+
+        function flatten(node, x, y, dx) {
+            if (!node) return;
+            node.x = x;
+            node.y = y;
+            nodes.push(node);
+            if (node.left) {
+                links.push({ source: node, target: node.left });
+                flatten(node.left, x - dx, y + 80, dx / 2);
+            }
+            if (node.right) {
+                links.push({ source: node, target: node.right });
+                flatten(node.right, x + dx, y + 80, dx / 2);
+            }
+        }
+
+        const svg = document.getElementById('tree-svg');
+        const statusText = document.getElementById('status-text');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function init() {
+            nodes = [];
+            links = [];
+            matchedNodes.clear();
+            finished = false;
+            flatten(treeData, 450, 50, 180);
+            callStack = [{ p: treeData.left, q: treeData.right, state: 'CHECK_VAL' }];
+            statusText.innerText = "准备开始：从根节点的左右两个孩子开始对比";
+            nextBtn.disabled = false;
+            render();
+        }
+
+        function render() {
+            svg.innerHTML = '';
+            
+            if (nodes.length > 0) {
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                nodes.forEach(n => {
+                    minX = Math.min(minX, n.x);
+                    maxX = Math.max(maxX, n.x);
+                    minY = Math.min(minY, n.y);
+                    maxY = Math.max(maxY, n.y);
+                });
+                
+                // Add mirror line to boundaries
+                minX = Math.min(minX, 450);
+                maxX = Math.max(maxX, 450);
+                
+                const padding = 40;
+                const width = maxX - minX + padding * 2;
+                const height = maxY - minY + padding * 2;
+                svg.setAttribute('viewBox', `${minX - padding} ${minY - padding} ${width} ${height}`);
+                
+                // Mirror line
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', 450); line.setAttribute('y1', minY - 20);
+                line.setAttribute('x2', 450); line.setAttribute('y2', maxY + 20);
+                line.setAttribute('class', 'mirror-line');
+                svg.appendChild(line);
+            }
+
+            // Links
+            links.forEach(l => {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                path.setAttribute('x1', l.source.x);
+                path.setAttribute('y1', l.source.y);
+                path.setAttribute('x2', l.target.x);
+                path.setAttribute('y2', l.target.y);
+                path.setAttribute('class', 'link');
+                svg.appendChild(path);
+            });
+            // Nodes
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let className = 'node';
+                const current = callStack[callStack.length - 1];
+                if (current) {
+                    if (current.p === n) className += ' active-p';
+                    if (current.q === n) className += ' active-q';
+                }
+                if (matchedNodes.has(n.id)) className += ' match';
+                g.setAttribute('class', className);
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', n.x);
+                circle.setAttribute('cy', n.y);
+                circle.setAttribute('r', 20);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', n.x);
+                text.setAttribute('y', n.y);
+                text.textContent = n.val;
+                
+                g.appendChild(circle);
+                g.appendChild(text);
+                svg.appendChild(g);
+            });
+        }
+
+        nextBtn.onclick = () => {
+            if (finished) return;
+            const current = callStack[callStack.length - 1];
+
+            if (current.state === 'CHECK_VAL') {
+                if (!current.p && !current.q) {
+                    statusText.innerText = "两个位置都是空的，匹配！";
+                    callStack.pop();
+                    if (callStack.length === 0) { finished = true; statusText.innerText = "检查完毕：是对称的！"; nextBtn.disabled = true; }
+                } else if (!current.p || !current.q || current.p.val !== current.q.val) {
+                    statusText.innerText = "发现不同！不是镜像对称。";
+                    finished = true;
+                    nextBtn.disabled = true;
+                } else {
+                    statusText.innerText = `对比值：${current.p.val} vs ${current.q.val}。匹配！开始对比下一层。`;
+                    matchedNodes.add(current.p.id);
+                    matchedNodes.add(current.q.id);
+                    current.state = 'CHECK_OUTER';
+                }
+            } else if (current.state === 'CHECK_OUTER') {
+                statusText.innerText = "对比外侧：A的左手 vs B的右手";
+                current.state = 'CHECK_INNER';
+                callStack.push({ p: current.p.left, q: current.q.right, state: 'CHECK_VAL' });
+            } else if (current.state === 'CHECK_INNER') {
+                statusText.innerText = "对比内侧：A的右手 vs B的左手";
+                current.state = 'FINISH_NODE';
+                callStack.push({ p: current.p.right, q: current.q.left, state: 'CHECK_VAL' });
+            } else if (current.state === 'FINISH_NODE') {
+                callStack.pop();
+                if (callStack.length === 0) {
+                    finished = true;
+                    statusText.innerText = "所有节点检查完毕：完美对称！";
+                    nextBtn.disabled = true;
+                } else {
+                    nextBtn.click();
+                }
+            }
+            render();
+        };
+
+        resetBtn.onclick = init;
+        init();
+    </script>
+</body>
+</html>

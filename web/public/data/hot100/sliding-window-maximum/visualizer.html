@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --window-color: rgba(167, 139, 250, 0.1);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .array-display { position: relative; display: flex; gap: 10px; margin-top: 40px; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 20px; }
+        .num-box { width: 50px; height: 50px; border: 1px solid #3f3f46; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.1rem; background: #18181b; transition: all 0.4s; position: relative; }
+        .num-box .idx { font-size: 0.6rem; color: #71717a; position: absolute; bottom: 2px; }
+        
+        #window-mask {
+            position: absolute; height: 60px; top: 15px;
+            background: var(--window-color); border: 2px solid var(--primary-violet);
+            border-radius: 14px; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5; box-shadow: 0 0 20px rgba(167, 139, 250, 0.2);
+        }
+
+        .heap-area { width: 100%; max-width: 600px; margin-top: 10px; }
+        .heap-title { font-size: 0.7rem; color: #71717a; margin-bottom: 10px; text-transform: uppercase; text-align: center; letter-spacing: 0.1em; }
+        .heap-slots { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .heap-item { 
+            background: var(--card-bg); border: 1px solid var(--border-color); 
+            padding: 10px 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center;
+            transition: all 0.3s;
+        }
+        .heap-item.top { border-color: var(--primary-emerald); background: rgba(16, 185, 129, 0.1); transform: scale(1.1); }
+        .heap-item.expired { border-color: var(--primary-rose); opacity: 0.5; }
+        .heap-val { font-size: 1.1rem; font-weight: bold; color: #fff; }
+        .heap-idx { font-size: 0.6rem; color: #71717a; }
+
+        .results { width: 100%; max-width: 600px; display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+        .res-box { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--primary-emerald); padding: 6px 16px; border-radius: 10px; font-size: 0.9rem; font-weight: bold; }
+
+        .controls { display: flex; gap: 16px; margin-top: 10px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！相框大小 <span class="highlight">k = 3</span>。</div>
+        </div>
+
+        <div class="array-display" id="array-display">
+            <div id="window-mask"></div>
+        </div>
+
+        <div class="results" id="res-display"></div>
+
+        <div class="heap-area">
+            <div class="heap-title">大顶堆 (英雄挑战赛)</div>
+            <div class="heap-slots" id="heap-display"></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [1, 3, -1, -3, 5, 3, 6, 7];
+        const k = 3;
+        let right = 0;
+        let heap = []; // Each item: {val, idx}
+        const ans = [];
+        let subStep = 0; // 0: push, 1: clean, 2: record
+
+        function init() {
+            const display = document.getElementById('array-display');
+            display.innerHTML = '<div id="window-mask"></div>';
+            nums.forEach((n, i) => {
+                display.innerHTML += `<div class="num-box" id="box-${i}">${n}<span class="idx">${i}</span></div>`;
+            });
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI() {
+            const boxWidth = 50 + 10;
+            const mask = document.getElementById('window-mask');
+            const offset = 20; // padding
+            
+            let winLeft = Math.max(0, right - k + 1);
+            mask.style.left = `${offset + winLeft * boxWidth - 5}px`;
+            mask.style.width = `${(right - winLeft + 1) * boxWidth - 10 + 10}px`;
+
+            const heapDisplay = document.getElementById('heap-display');
+            // Sort heap for visual clarity (descending by value)
+            const sortedHeap = [...heap].sort((a,b) => b.val - a.val);
+            heapDisplay.innerHTML = sortedHeap.map((item, i) => {
+                const isTop = i === 0;
+                const isExpired = item.idx <= right - k;
+                return `
+                    <div class="heap-item ${isTop?'top':''} ${isExpired?'expired':''}">
+                        <span class="heap-val">${item.val}</span>
+                        <span class="heap-idx">index: ${item.idx}</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('res-display').innerHTML = ans.map(v => `<div class="res-item res-box">${v}</div>`).join('');
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const currentVal = nums[right];
+
+            if (right >= nums.length) {
+                status.innerHTML = "🎉 所有的最大值都找到了！任务完成。";
+                document.getElementById('next-btn').disabled = true;
+                return;
+            }
+
+            if (subStep === 0) {
+                // Step 1: Push to heap
+                heap.push({val: currentVal, idx: right});
+                status.innerHTML = `右指针吞进数字 <span class="highlight">${currentVal}</span> (索引 ${right})，把它送入大王擂台。`;
+                updateUI();
+                
+                if (right < k - 1) {
+                    right++; // Still filling initial window
+                    subStep = 0;
+                } else {
+                    subStep = 1;
+                }
+            } else if (subStep === 1) {
+                // Step 2: Clean heap top
+                // Find actual top (max val)
+                heap.sort((a,b) => b.val - a.val);
+                const top = heap[0];
+                if (top.idx <= right - k) {
+                    status.innerHTML = `擂台大王 <span class="highlight" style="color:var(--primary-rose)">${top.val}</span> 的索引是 ${top.idx}，已经不在相框里了！<br>请他下台 (heap pop)。`;
+                    heap.shift(); // Remove top
+                    updateUI();
+                    subStep = 1; // Stay in clean mode until top is valid
+                } else {
+                    status.innerHTML = `现在的最高英雄 <span class="highlight" style="color:var(--primary-emerald)">${top.val}</span> 还在相框范围内！`;
+                    subStep = 2;
+                    updateUI();
+                }
+            } else if (subStep === 2) {
+                // Step 3: Record
+                heap.sort((a,b) => b.val - a.val);
+                ans.push(heap[0].val);
+                status.innerHTML = `记录当前相框的最大值: <span class="highlight" style="color:var(--primary-emerald)">${heap[0].val}</span>。`;
+                updateUI();
+                right++;
+                subStep = 0;
+            }
+        }
+
+        function reset() {
+            right = 0; heap = []; ans.length = 0; subStep = 0;
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

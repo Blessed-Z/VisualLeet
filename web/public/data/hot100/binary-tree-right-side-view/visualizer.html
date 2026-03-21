@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二叉树右视图可视化</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        #container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 20px;
+            flex-wrap: wrap;
+            position: relative;
+        }
+        #viz-area {
+            flex: 2;
+            min-width: 600px;
+            height: 600px;
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            border: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #sidebar {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #queue-container, #result-container {
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #30363d;
+        }
+        #queue-container { flex: 1; }
+        #result-container { flex: 1; overflow-y: auto; }
+        
+        h3 { margin-top: 0; color: #a855f7; }
+        
+        .queue-item {
+            display: inline-block;
+            background-color: #3b0764;
+            border: 1px solid #a855f7;
+            padding: 8px 12px;
+            margin: 4px;
+            border-radius: 6px;
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+            font-size: 14px;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+            cursor: grab;
+        }
+        
+        .node circle {
+            fill: #1e293b;
+            stroke: #475569;
+            stroke-width: 2px;
+            transition: all 0.3s;
+        }
+        .node text {
+            fill: #e2e8f0;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+        .node.active circle {
+            stroke: #f43f5e;
+            stroke-width: 4px;
+            fill: #4c0519;
+        }
+        .node.right-most circle {
+            stroke: #fbbf24;
+            stroke-width: 4px;
+            fill: #78350f;
+            filter: drop-shadow(0 0 8px #fbbf24);
+        }
+        .node.in-queue circle {
+            stroke: #a855f7;
+            stroke-width: 2px;
+            fill: #3b0764;
+        }
+        .node.visited circle {
+            fill: #064e3b;
+            stroke: #10b981;
+        }
+        .link {
+            stroke: #475569;
+            stroke-width: 2px;
+            fill: none;
+            transition: stroke 0.3s;
+        }
+        .link.active {
+            stroke: #f43f5e;
+            stroke-width: 3px;
+        }
+        
+        #controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        button {
+            background-color: #a855f7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #9333ea; }
+        button:disabled { background-color: #30363d; color: #8b949e; cursor: not-allowed; }
+        
+        #status-text {
+            margin-top: 10px;
+            font-size: 1.1em;
+            color: #f43f5e;
+            text-align: center;
+            min-height: 1.5em;
+        }
+        
+        /* 缩放控制栏 */
+        #zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 100;
+        }
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background-color: #30363d;
+            border: 1px solid #484f58;
+        }
+        
+        .result-item {
+            display: inline-block;
+            background-color: #78350f;
+            border: 1px solid #fbbf24;
+            padding: 8px 12px;
+            margin: 4px;
+            border-radius: 6px;
+            color: #fbbf24;
+            font-weight: bold;
+            animation: bounceIn 0.5s ease;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="viz-area">
+            <h3>二叉树右视图：寻找每层的“守门人”</h3>
+            <div id="status-text">点击“下一步”开始扫描</div>
+            
+            <div id="zoom-controls">
+                <button class="zoom-btn" id="zoom-in">+</button>
+                <button class="zoom-btn" id="zoom-out">-</button>
+                <button class="zoom-btn" id="zoom-reset">⟲</button>
+            </div>
+            
+            <svg id="tree-svg">
+                <g id="viewport-g"></g>
+            </svg>
+            
+            <div id="controls">
+                <button id="reset-btn">重置</button>
+                <button id="next-btn">下一步</button>
+            </div>
+        </div>
+        
+        <div id="sidebar">
+            <div id="queue-container">
+                <h3>待扫描队列 (Queue)</h3>
+                <div id="queue-list"></div>
+            </div>
+            <div id="result-container">
+                <h3>右视图结果 (Result)</h3>
+                <div id="result-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            id: 1, val: 1,
+            left: {
+                id: 2, val: 2,
+                left: null,
+                right: { id: 5, val: 5, left: null, right: null }
+            },
+            right: {
+                id: 3, val: 3,
+                left: null,
+                right: { id: 4, val: 4, left: null, right: null }
+            }
+        };
+
+        let nodes = [];
+        let links = [];
+        let queue = [];
+        let result = [];
+        let levelSize = 0;
+        let processedInLevel = 0;
+        let finished = false;
+        let currentLevelNodes = [];
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+
+        function flatten(node, x, y, dx) {
+            if (!node) return;
+            node.x = x; node.y = y;
+            nodes.push(node);
+            if (node.left) {
+                links.push({ source: node, target: node.left });
+                flatten(node.left, x - dx, y + 100, dx * 0.5);
+            }
+            if (node.right) {
+                links.push({ source: node, target: node.right });
+                flatten(node.right, x + dx, y + 100, dx * 0.5);
+            }
+        }
+
+        const svg = document.getElementById('tree-svg');
+        const viewportG = document.getElementById('viewport-g');
+        const queueList = document.getElementById('queue-list');
+        const resultList = document.getElementById('result-list');
+        const statusText = document.getElementById('status-text');
+        const nextBtn = document.getElementById('next-btn');
+
+        function init() {
+            nodes = []; links = []; queue = [treeData]; result = [];
+            levelSize = 1; processedInLevel = 0; finished = false;
+            currentLevelNodes = [];
+            flatten(treeData, 400, 50, 200);
+            updateViewBox();
+            statusText.innerText = "准备就绪，根节点进入队列";
+            nextBtn.disabled = false;
+            render();
+        }
+
+        function updateViewBox() {
+            if (nodes.length === 0) return;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            nodes.forEach(n => {
+                minX = Math.min(minX, n.x);
+                maxX = Math.max(maxX, n.x);
+                minY = Math.min(minY, n.y);
+                maxY = Math.max(maxY, n.y);
+            });
+            const padding = 60;
+            const width = maxX - minX + padding * 2;
+            const height = maxY - minY + padding * 2;
+            svg.setAttribute('viewBox', `${minX - padding} ${minY - padding} ${width} ${height}`);
+        }
+
+        function render() {
+            viewportG.innerHTML = '';
+            
+            // Render links
+            links.forEach(l => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', l.source.x); line.setAttribute('y1', l.source.y);
+                line.setAttribute('x2', l.target.x); line.setAttribute('y2', l.target.y);
+                line.setAttribute('class', 'link');
+                viewportG.appendChild(line);
+            });
+
+            // Render nodes
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let className = 'node';
+                if (queue.includes(n)) className += ' in-queue';
+                if (result.includes(n.val)) className += ' right-most';
+                
+                g.setAttribute('class', className);
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', n.x); circle.setAttribute('cy', n.y); circle.setAttribute('r', 25);
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', n.x); text.setAttribute('y', n.y); text.textContent = n.val;
+                g.appendChild(circle); g.appendChild(text); viewportG.appendChild(g);
+            });
+
+            // Render queue
+            queueList.innerHTML = '';
+            queue.forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'queue-item'; div.innerText = n.val; queueList.appendChild(div);
+            });
+
+            // Render result
+            resultList.innerHTML = '';
+            result.forEach(val => {
+                const div = document.createElement('div');
+                div.className = 'result-item'; div.innerText = val; resultList.appendChild(div);
+            });
+        }
+
+        nextBtn.onclick = () => {
+            if (finished) return;
+
+            if (processedInLevel === 0) {
+                levelSize = queue.length;
+                currentLevelNodes = [...queue];
+                statusText.innerText = `开始处理新的一层，共 ${levelSize} 个节点`;
+            }
+
+            const node = queue.shift();
+            processedInLevel++;
+
+            if (processedInLevel === levelSize) {
+                // 这一层的最后一个节点
+                result.push(node.val);
+                statusText.innerText = `节点 ${node.val} 是这一层最右边的，加入右视图！`;
+            } else {
+                statusText.innerText = `节点 ${node.val} 被挡住了，看下一位...`;
+            }
+
+            if (node.left) queue.push(node.left);
+            if (node.right) queue.push(node.right);
+
+            if (processedInLevel === levelSize) {
+                processedInLevel = 0;
+                if (queue.length === 0) {
+                    finished = true;
+                    statusText.innerText = "全部扫描完成！";
+                    nextBtn.disabled = true;
+                }
+            }
+            render();
+        };
+
+        // Zoom logic
+        function applyTransform() {
+            viewportG.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        }
+
+        document.getElementById('zoom-in').onclick = () => { scale *= 1.2; applyTransform(); };
+        document.getElementById('zoom-out').onclick = () => { scale /= 1.2; applyTransform(); };
+        document.getElementById('zoom-reset').onclick = () => { scale = 1; translateX = 0; translateY = 0; applyTransform(); };
+
+        document.getElementById('reset-btn').onclick = init;
+        
+        init();
+    </script>
+</body>
+</html>

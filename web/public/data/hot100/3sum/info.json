@@ -1,0 +1,17 @@
+{
+  "id": 15,
+  "title": "15. 三数之和",
+  "slug": "3sum",
+  "link": "https://leetcode.cn/problems/3sum/",
+  "difficulty": "Medium",
+  "description": "给你一个包含 n 个整数的数组 nums，判断 nums 中是否存在三个元素 a，b，c ，使得 a + b + c = 0 ？请你找出所有和为 0 且不重复的三元组。",
+  "solutions": [
+    {
+      "name": "排序 + 双指针 (最优)",
+      "file": "hash-map.py",
+      "time": "O(N^2)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5. 最长回文子串 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .string-display {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 40px;
+            font-family: monospace;
+            font-size: 24px;
+        }
+
+        .char-box {
+            width: 45px;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #1c2128;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .char-box.active-center { border: 2px solid var(--amber-yellow); transform: translateY(-5px); }
+        .char-box.expanding { border-color: var(--primary-purple); background: rgba(168, 85, 247, 0.1); }
+        .char-box.matched { background: var(--emerald-green); color: black; border-color: var(--emerald-green); }
+        .char-box.failed { border-color: var(--rose-red); background: rgba(244, 63, 94, 0.1); }
+
+        .pointer {
+            position: absolute;
+            bottom: -25px;
+            font-size: 14px;
+            color: var(--amber-yellow);
+        }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .best-found {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .best-found span {
+            font-family: monospace;
+            color: var(--emerald-green);
+            font-size: 20px;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>5. 最长回文子串 (Longest Palindromic Substring)</h2>
+    
+    <div class="string-display" id="stringDisplay"></div>
+
+    <div class="status-text" id="status">点击“下一步”开始，寻找中心点</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+
+    <div class="best-found">
+        目前找到的最长回文：<span id="bestResult">-</span>
+    </div>
+</div>
+
+<script>
+    const s = "babad";
+    let centerIdx = 0;
+    let type = 0; // 0: odd, 1: even
+    let left = 0, right = 0;
+    let isExpanding = false;
+    let best = "";
+
+    function init() {
+        const display = document.getElementById('stringDisplay');
+        display.innerHTML = '';
+        s.split('').forEach((char, idx) => {
+            const box = document.createElement('div');
+            box.className = 'char-box';
+            box.id = `char-${idx}`;
+            box.textContent = char;
+            display.appendChild(box);
+        });
+
+        centerIdx = 0;
+        type = 0;
+        isExpanding = false;
+        best = "";
+        document.getElementById('bestResult').textContent = "-";
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '点击下一步，从第一个字符开始作为中心扩散';
+    }
+
+    function resetHighlights() {
+        document.querySelectorAll('.char-box').forEach(b => {
+            b.className = 'char-box';
+        });
+    }
+
+    function next() {
+        if (centerIdx >= s.length) return;
+
+        resetHighlights();
+        const status = document.getElementById('status');
+
+        if (!isExpanding) {
+            // Pick a new center
+            left = centerIdx;
+            right = (type === 0) ? centerIdx : centerIdx + 1;
+            
+            if (right >= s.length && type === 1) {
+                moveToNextCenter();
+                next();
+                return;
+            }
+
+            document.getElementById(`char-${left}`).classList.add('active-center');
+            if (type === 1) document.getElementById(`char-${right}`).classList.add('active-center');
+            
+            status.textContent = `选中中心点: ${ (type === 0) ? s[left] : s[left] + s[right] } (位置 ${left}${type===1 ? ','+right : ''})`;
+            isExpanding = true;
+        } else {
+            // Try to expand
+            if (left >= 0 && right < s.length && s[left] === s[right]) {
+                const current = s.substring(left, right + 1);
+                status.textContent = `两边字符相等 ('${s[left]}')，可以扩散！当前回文: ${current}`;
+                
+                // Highlight matched range
+                for(let k=left; k<=right; k++) {
+                    document.getElementById(`char-${k}`).classList.add('matched');
+                }
+
+                if (current.length > best.length) {
+                    best = current;
+                    document.getElementById('bestResult').textContent = best;
+                }
+
+                left--;
+                right++;
+            } else {
+                // Expansion failed
+                if (left >= 0 && right < s.length) {
+                    document.getElementById(`char-${left}`).classList.add('failed');
+                    document.getElementById(`char-${right}`).classList.add('failed');
+                    status.textContent = `两边字符不相等 ('${s[left]}' vs '${s[right]}')，扩散结束。`;
+                } else {
+                    status.textContent = `超出边界，扩散结束。`;
+                }
+                
+                isExpanding = false;
+                moveToNextCenter();
+            }
+        }
+    }
+
+    function moveToNextCenter() {
+        if (type === 0) {
+            type = 1;
+        } else {
+            type = 0;
+            centerIdx++;
+        }
+        if (centerIdx >= s.length) {
+            document.getElementById('nextBtn').disabled = true;
+            document.getElementById('status').textContent = "遍历结束！最长回文子串是: " + best;
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

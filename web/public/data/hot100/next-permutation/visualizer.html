@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>31. 下一个排列 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .nums-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            height: 100px;
+            align-items: flex-end;
+        }
+
+        .num-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .num-bar {
+            width: 40px;
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            border-radius: 4px 4px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            font-weight: bold;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .num-bar.pivot { border: 2px solid var(--rose-red); background: rgba(244, 63, 94, 0.2); }
+        .num-bar.successor { border: 2px solid var(--emerald-green); background: rgba(16, 185, 129, 0.2); }
+        .num-bar.swapping { transform: translateY(-20px); }
+        .num-bar.reversing { border-color: var(--primary-purple); }
+
+        .idx-label { font-size: 12px; color: #8b949e; }
+
+        .status-text {
+            height: 80px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .step-info {
+            font-size: 14px;
+            color: #8b949e;
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>31. 下一个排列 (Next Permutation)</h2>
+    
+    <div class="visualization-area">
+        <div class="nums-row" id="numsRow"></div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始</div>
+    <div class="step-info" id="stepInfo">准备寻找第一个“下降点”</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    let nums = [1, 2, 7, 4, 3, 1];
+    let i = -2, j = -1;
+    let step = 0; // 0: find i, 1: find j, 2: swap, 3: reverse
+    let revLeft = -1, revRight = -1;
+
+    function init() {
+        nums = [1, 2, 7, 4, 3, 1];
+        i = nums.length - 2;
+        j = nums.length - 1;
+        step = 0;
+        revLeft = -1; revRight = -1;
+        render();
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '开始寻找从右向左第一个下降点 i (nums[i] < nums[i+1])';
+        document.getElementById('stepInfo').textContent = 'i 目前指向 ' + i;
+    }
+
+    function render() {
+        const row = document.getElementById('numsRow');
+        row.innerHTML = '';
+        nums.forEach((num, idx) => {
+            const container = document.createElement('div');
+            container.className = 'num-container';
+            
+            const bar = document.createElement('div');
+            bar.className = 'num-bar';
+            bar.style.height = `${num * 15 + 30}px`;
+            bar.textContent = num;
+            if (idx === i) bar.classList.add('pivot');
+            if (idx === j && step === 1) bar.classList.add('successor');
+            if (idx > i && step === 3) bar.classList.add('reversing');
+            
+            const label = document.createElement('div');
+            label.className = 'idx-label';
+            label.textContent = idx;
+            
+            container.appendChild(bar);
+            container.appendChild(label);
+            row.appendChild(container);
+        });
+    }
+
+    async function next() {
+        const status = document.getElementById('status');
+        const stepInfo = document.getElementById('stepInfo');
+
+        if (step === 0) {
+            if (i >= 0 && nums[i] >= nums[i+1]) {
+                i--;
+                render();
+                stepInfo.textContent = 'i 继续向左寻找... 当前 i = ' + i;
+            } else {
+                if (i >= 0) {
+                    status.innerHTML = `找到下降点！<b>nums[${i}] = ${nums[i]}</b> < nums[${i+1}] = ${nums[i+1]}`;
+                    step = 1;
+                    j = nums.length - 1;
+                    stepInfo.textContent = '接下来在右侧寻找第一个比 ' + nums[i] + ' 大的数 j';
+                } else {
+                    status.textContent = '没找到下降点（全降序），准备全数组反转。';
+                    step = 3;
+                    revLeft = 0; revRight = nums.length - 1;
+                }
+                render();
+            }
+        } else if (step === 1) {
+            if (j >= 0 && nums[j] <= nums[i]) {
+                j--;
+                render();
+                stepInfo.textContent = 'j 继续向左寻找... 当前 j = ' + j;
+            } else {
+                status.innerHTML = `找到较大的数！<b>nums[${j}] = ${nums[j]}</b>`;
+                step = 2;
+                stepInfo.textContent = '准备交换 nums[i] 和 nums[j]';
+                render();
+            }
+        } else if (step === 2) {
+            status.innerHTML = `交换 <b>nums[${i}]</b> (${nums[i]}) 和 <b>nums[${j}]</b> (${nums[j]})`;
+            [nums[i], nums[j]] = [nums[j], nums[i]];
+            step = 3;
+            revLeft = i + 1;
+            revRight = nums.length - 1;
+            stepInfo.textContent = '交换完成。最后需要反转下标 ' + revLeft + ' 之后的部分。';
+            render();
+        } else if (step === 3) {
+            if (revLeft < revRight) {
+                status.innerHTML = `反转中：交换 <b>nums[${revLeft}]</b> 和 <b>nums[${revRight}]</b>`;
+                [nums[revLeft], nums[revRight]] = [nums[revRight], nums[revLeft]];
+                revLeft++;
+                revRight--;
+                render();
+            } else {
+                status.innerHTML = `🏁 <b>完成！</b> 得到了下一个排列。`;
+                stepInfo.textContent = '所有步骤已完成。';
+                document.getElementById('nextBtn').disabled = true;
+                render();
+            }
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

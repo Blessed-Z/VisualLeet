@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>23. 合并 K 个升序链表 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 0;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid var(--primary-purple);
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            line-height: 1.6;
+        }
+
+        .section-title {
+            font-size: 0.8em;
+            text-transform: uppercase;
+            color: #8b949e;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+
+        .visualization-area {
+            border: 1px solid #30363d;
+            border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .list-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            min-height: 60px;
+        }
+
+        .node {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: var(--node-bg);
+            border: 2px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .node.extracting { border-color: var(--rose-red); transform: scale(1.2); z-index: 10; }
+        .node.in-pool { border-color: var(--amber); }
+        .node.sorted { border-color: var(--primary-purple); }
+        .node.final { border-color: var(--emerald-green); box-shadow: 0 0 10px rgba(6, 214, 160, 0.2); }
+        .node.dim { opacity: 0.2; }
+
+        .arrow { color: #30363d; font-size: 1.2em; transition: opacity 0.3s; }
+
+        .pool-area {
+            min-height: 100px;
+            border: 2px dashed #30363d;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            background: rgba(22, 27, 34, 0.5);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 35px;
+            border-radius: 35px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+
+        button:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.2); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .highlight { font-weight: bold; }
+        .rose { color: var(--rose-red); }
+        .amber { color: var(--amber); }
+        .emerald { color: var(--emerald-green); }
+        .purple { color: var(--primary-purple); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🍱 合并 K 个升序链表</h1>
+        <div class="status-box">
+            <div id="status">准备合并 3 个有序链表。我们要先提取所有数值。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始提取第一个节点。</div>
+        </div>
+
+        <div class="visualization-area">
+            <div>
+                <div class="section-title">原始链表小队 (K 个队列)</div>
+                <div id="input-lists-container" style="display: flex; flex-direction: column; gap: 15px;"></div>
+            </div>
+
+            <div>
+                <div class="section-title">数值收集口袋 (收集 -> 排序)</div>
+                <div id="pool" class="pool-area"></div>
+            </div>
+
+            <div>
+                <div class="section-title">最终合并超级链表</div>
+                <div id="final-list" class="list-row"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const initialLists = [ [1, 4, 5], [1, 3, 4], [2, 6] ];
+        let vals = [];
+        let state = 0; // 0: Extracting, 1: Ready to Sort, 2: Sorting, 3: Reassembling, 4: Done
+        let listIdx = 0;
+        let nodeIdx = 0;
+        let pool = [];
+        let finalNodes = [];
+
+        function init() {
+            const container = document.getElementById('input-lists-container');
+            container.innerHTML = '';
+            initialLists.forEach((list, lIdx) => {
+                const row = document.createElement('div');
+                row.className = 'list-row';
+                list.forEach((v, nIdx) => {
+                    const node = document.createElement('div');
+                    node.className = 'node';
+                    node.id = `input-${lIdx}-${nIdx}`;
+                    node.innerText = v;
+                    row.appendChild(node);
+                    if (nIdx < list.length - 1) {
+                        const arrow = document.createElement('div');
+                        arrow.className = 'arrow';
+                        arrow.innerText = '→';
+                        arrow.id = `arrow-${lIdx}-${nIdx}`;
+                        row.appendChild(arrow);
+                    }
+                });
+                container.appendChild(row);
+            });
+
+            document.getElementById('pool').innerHTML = '<span style="color:#30363d">等待数值进入...</span>';
+            document.getElementById('final-list').innerHTML = '<span style="color:#30363d">等待重组...</span>';
+            
+            state = 0;
+            listIdx = 0;
+            nodeIdx = 0;
+            pool = [];
+            finalNodes = [];
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (state === 0) {
+                // Phase: Extracting
+                if (listIdx < initialLists.length) {
+                    const val = initialLists[listIdx][nodeIdx];
+                    const node = document.getElementById(`input-${listIdx}-${nodeIdx}`);
+                    node.classList.add('extracting');
+                    
+                    status.innerHTML = `正在提取第 <span class="rose">${listIdx + 1}</span> 队的数值 <span class="rose highlight">${val}</span>。`;
+                    subStatus.innerText = `将其放入“口袋”中暂存。`;
+
+                    setTimeout(() => {
+                        node.classList.remove('extracting');
+                        node.classList.add('dim');
+                        if (nodeIdx < initialLists[listIdx].length - 1) {
+                            document.getElementById(`arrow-${listIdx}-${nodeIdx}`).style.opacity = '0.2';
+                        }
+                        
+                        pool.push(val);
+                        renderPool();
+                        
+                        nodeIdx++;
+                        if (nodeIdx >= initialLists[listIdx].length) {
+                            listIdx++;
+                            nodeIdx = 0;
+                        }
+                    }, 300);
+                } else {
+                    state = 1;
+                    status.innerHTML = `✅ <span class="amber">数值提取完毕！</span>`;
+                    subStatus.innerText = `现在口袋里一共有 ${pool.length} 个球，但它们是乱序的。准备排序。`;
+                }
+            } else if (state === 1) {
+                // Ready to sort
+                status.innerHTML = `准备执行 <span class="purple">vals.sort()</span> 排序咒语。`;
+                subStatus.innerText = `点击下一步，观察口袋里的数值变化。`;
+                state = 2;
+            } else if (state === 2) {
+                // Sorting
+                pool.sort((a, b) => a - b);
+                renderPool(true);
+                status.innerHTML = `🔮 <b>排序成功！</b>`;
+                subStatus.innerText = `所有数值已按从小到大排好队。下一步开始构建新链表。`;
+                state = 3;
+                listIdx = 0; // Reuse listIdx for final list assembly
+            } else if (state === 3) {
+                // Reassembling
+                if (listIdx < pool.length) {
+                    const val = pool[listIdx];
+                    finalNodes.push(val);
+                    renderFinal();
+                    status.innerHTML = `从口袋取出最小的 <span class="emerald highlight">${val}</span>。`;
+                    subStatus.innerText = `创建新节点并连入超级链表。`;
+                    listIdx++;
+                } else {
+                    status.innerHTML = `🎊 <b>合并大功告成！</b>`;
+                    subStatus.innerText = `K 个有序链表已完美合一。`;
+                    document.getElementById('next-btn').disabled = true;
+                }
+            }
+        }
+
+        function renderPool(sorted = false) {
+            const p = document.getElementById('pool');
+            p.innerHTML = '';
+            pool.forEach(v => {
+                const node = document.createElement('div');
+                node.className = `node ${sorted ? 'sorted' : 'in-pool'}`;
+                node.innerText = v;
+                p.appendChild(node);
+            });
+        }
+
+        function renderFinal() {
+            const f = document.getElementById('final-list');
+            f.innerHTML = '';
+            finalNodes.forEach((v, i) => {
+                const node = document.createElement('div');
+                node.className = 'node final';
+                node.innerText = v;
+                f.appendChild(node);
+                if (i < finalNodes.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow';
+                    arrow.innerText = '→';
+                    f.appendChild(arrow);
+                }
+            });
+        }
+
+        function reset() { init(); }
+        window.onload = init;
+    </script>
+</body>
+</html>

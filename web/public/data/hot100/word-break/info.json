@@ -1,0 +1,18 @@
+{
+  "id": 139,
+  "title": "139. 单词拆分",
+  "difficulty": "Medium",
+  "description": "给你一个字符串 s 和一个字符串列表 wordDict 作为字典。请你判断是否可以利用字典中出现的单词拼接出 s 。",
+  "category": "动态规划",
+  "complexity": {
+    "time": "O(n^2)",
+    "space": "O(n)"
+  },
+  "solutions": [
+    {
+      "id": "dp",
+      "name": "动态规划",
+      "description": "定义 dp[i] 表示字符串的前 i 个字符是否可以被拆分为字典中的单词。"
+    }
+  ]
+}

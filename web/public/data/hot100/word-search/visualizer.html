@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>79. 单词搜索 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+
+        .visualization-area {
+            position: relative; border: 1px solid #30363d; border-radius: 20px;
+            background: #1c2128; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; overflow: hidden;
+            min-height: 400px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .cell {
+            width: 55px; height: 55px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5em; font-weight: bold; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background-color: var(--node-bg); border: 2px solid #30363d;
+            position: relative;
+        }
+
+        .cell.active { border-color: var(--amber); transform: scale(1.1); z-index: 10; box-shadow: 0 0 15px var(--amber); }
+        .cell.matched { background-color: rgba(6, 214, 160, 0.2); border-color: var(--emerald-green); color: var(--emerald-green); }
+        .cell.path { background-color: rgba(157, 78, 221, 0.3); border-color: var(--primary-purple); transform: scale(1.05); }
+        .cell.failed { border-color: var(--rose-red); color: var(--rose-red); opacity: 0.6; }
+        .cell.hidden-char { opacity: 0.2; transform: scale(0.9); }
+
+        .word-bar {
+            display: flex; gap: 10px; justify-content: center; margin-top: 20px;
+        }
+        .word-char {
+            width: 40px; height: 45px; border: 2px solid #30363d; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+            transition: all 0.3s;
+        }
+        .word-char.active { border-color: var(--amber); background: rgba(255, 190, 11, 0.1); color: var(--amber); }
+        .word-char.done { border-color: var(--emerald-green); background: rgba(6, 214, 160, 0.1); color: var(--emerald-green); }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .panel-box {
+            background: var(--node-bg); border: 1px solid #30363d; border-radius: 15px; padding: 15px;
+        }
+        .panel-title { font-size: 0.8em; color: #8b949e; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 单词搜索：地毯式寻宝</h1>
+        <div class="status-box">
+            <div id="status">目标单词: <span style="color:var(--amber); font-weight:bold;">"ABCCED"</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始寻找路径。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="visualization-area" id="viz">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+                <div class="grid" id="grid-container"></div>
+            </div>
+
+            <div class="side-panel" style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="panel-box">
+                    <div class="panel-title">目标单词进度</div>
+                    <div class="word-bar" id="word-bar"></div>
+                </div>
+                <div class="panel-box">
+                    <div class="panel-title">图例说明</div>
+                    <div style="font-size: 0.85em; line-height: 1.8;">
+                        <span style="color:var(--amber)">●</span> 黄色：当前正在对比的格子<br>
+                        <span style="color:var(--primary-purple)">●</span> 紫色：目前拼成的正确路径<br>
+                        <span style="color:var(--rose-red)">●</span> 红色：匹配失败，准备回溯<br>
+                        <span style="opacity:0.4">●</span> 虚影：暂时隐身（防止重用）
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const initialBoard = [
+            ['A','B','C','E'],
+            ['S','F','C','S'],
+            ['A','D','E','E']
+        ];
+        const word = "ABCCED";
+        
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+        let rows = initialBoard.length;
+        let cols = initialBoard[0].length;
+
+        function solve() {
+            const board = initialBoard.map(row => [...row]);
+            steps = [];
+
+            function dfs(r, c, k, path) {
+                const currentPath = [...path, {r, c}];
+                
+                // Try to match
+                if (board[r][c] !== word[k]) {
+                    steps.push({ type: 'TRY', r, c, k, path: currentPath, board: board.map(row => [...row]), status: 'FAILED' });
+                    return false;
+                }
+
+                steps.push({ type: 'TRY', r, c, k, path: currentPath, board: board.map(row => [...row]), status: 'MATCHED' });
+
+                if (k === word.length - 1) {
+                    steps.push({ type: 'SUCCESS', r, c, k, path: currentPath, board: board.map(row => [...row]) });
+                    return true;
+                }
+
+                const tmp = board[r][c];
+                board[r][c] = ''; // Hide
+                steps.push({ type: 'HIDE', r, c, k, path: currentPath, board: board.map(row => [...row]) });
+
+                const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+                for (let [dr, dc] of dirs) {
+                    const nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                        if (dfs(nr, nc, k + 1, currentPath)) return true;
+                    }
+                }
+
+                board[r][c] = tmp; // Restore
+                steps.push({ type: 'BACKTRACK', r, c, k, path: currentPath, board: board.map(row => [...row]) });
+                return false;
+            }
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (dfs(r, c, 0, [])) return;
+                }
+            }
+        }
+
+        solve();
+
+        function render() {
+            const step = steps[currentStep];
+            if (!step) return;
+
+            // Render Grid
+            const container = document.getElementById('grid-container');
+            container.style.gridTemplateColumns = `repeat(${cols}, 55px)`;
+            container.style.transform = `scale(${zoomFactor})`;
+            container.innerHTML = '';
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const div = document.createElement('div');
+                    let cls = 'cell';
+                    const char = step.board[r][c] || initialBoard[r][c];
+                    
+                    // Highlight logic
+                    if (step.r === r && step.c === c) {
+                        if (step.status === 'FAILED') cls += ' failed active';
+                        else cls += ' active';
+                    }
+                    
+                    if (step.path.some(p => p.r === r && p.c === c)) {
+                        cls += ' path';
+                    }
+                    
+                    if (step.board[r][c] === '') {
+                        cls += ' hidden-char';
+                    }
+
+                    div.className = cls;
+                    div.innerText = char;
+                    container.appendChild(div);
+                }
+            }
+
+            // Render Word Bar
+            const wordBar = document.getElementById('word-bar');
+            wordBar.innerHTML = '';
+            for(let i=0; i<word.length; i++) {
+                const div = document.createElement('div');
+                div.className = `word-char ${i === step.k ? 'active' : ''} ${i < step.k ? 'done' : ''}`;
+                div.innerText = word[i];
+                wordBar.appendChild(div);
+            }
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'TRY') {
+                if (step.status === 'MATCHED') {
+                    status.innerHTML = `成功匹配字符 <span style="color:var(--emerald-green)">'${word[step.k]}'</span> !`;
+                    subStatus.innerText = `准备进入下一步，寻找下一个字符 '${word[step.k+1] || "DONE"}'。`;
+                } else {
+                    status.innerHTML = `匹配失败：格子里的 <span style="color:var(--rose-red)">'${initialBoard[step.r][step.c]}'</span> 不等于目标 <span style="color:var(--amber)">'${word[step.k]}'</span>。`;
+                    subStatus.innerText = `这条搜寻路径宣告终结，准备回退。`;
+                }
+            } else if (step.type === 'HIDE') {
+                status.innerHTML = `施展“隐身术”：暂时移走字符 '${word[step.k]}'。`;
+                subStatus.innerText = `这样我们就不会在拼写同一个单词时绕回来重复使用这个格子啦！`;
+            } else if (step.type === 'BACKTRACK') {
+                status.innerHTML = `回溯还原：将字符 '${word[step.k]}' 放回坐标 (${step.r}, ${step.c})。`;
+                subStatus.innerText = `刚才的尝试没能拼出全词，把它还给拼字板，尝试其他方向。`;
+            } else if (step.type === 'SUCCESS') {
+                status.innerHTML = `🎊 <b>寻宝成功！</b>`;
+                subStatus.innerHTML = `我们完整地拼出了单词 <span style="color:var(--emerald-green); font-weight:bold;">"${word}"</span> !`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+
+        window.onload = render;
+    </script>
+</body>
+</html>

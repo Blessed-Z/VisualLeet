@@ -1,0 +1,18 @@
+{
+  "id": 437,
+  "slug": "path-sum-iii",
+  "title": "路径总和 III",
+  "difficulty": "Medium",
+  "category": "二叉树",
+  "tags": ["Tree", "Depth-First Search", "Binary Tree", "Prefix Sum"],
+  "description": "给定一个二叉树的根节点 root ，和一个整数 targetSum ，求该二叉树里节点值之和等于 targetSum 的 路径 的数目。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "前缀和+DFS",
+      "time": "O(N)",
+      "space": "O(N)"
+    }
+  ]
+}

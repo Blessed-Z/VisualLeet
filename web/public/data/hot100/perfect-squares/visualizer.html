@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .grid-container {
+            width: 100%; height: 350px; background: var(--box-bg); border: 2px solid #475569;
+            border-radius: 20px; padding: 30px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; justify-content: center;
+        }
+
+        .node {
+            width: 50px; height: 50px; background: #334155; border: 2px solid #475569;
+            border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; transition: all 0.4s;
+        }
+        .node.active { border-color: var(--amber); box-shadow: 0 0 15px var(--amber); transform: scale(1.1); }
+        .node.source { border-color: var(--purple); background: rgba(139, 92, 246, 0.2); }
+        .node.square { border-color: var(--emerald); background: rgba(16, 185, 129, 0.1); }
+        .node .val { font-weight: bold; font-size: 1rem; }
+        .node .idx { position: absolute; bottom: -20px; font-size: 0.6rem; color: #64748b; }
+
+        .legend { display: flex; gap: 20px; font-size: 0.8rem; color: #94a3b8; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 20px; }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">拼出目标数字 13，准备出发！</div>
+        
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: var(--amber);"></div> 当前计算</div>
+            <div class="legend-item"><div class="dot" style="background: var(--purple);"></div> 尝试减去的点</div>
+            <div class="legend-item"><div class="dot" style="background: var(--emerald);"></div> 平方数位置</div>
+        </div>
+
+        <div class="grid-container" id="grid"></div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">算下一个</button>
+        </div>
+    </div>
+
+    <script>
+        const n = 13;
+        const squares = [1, 4, 9];
+        let step = 0;
+        let dp = Array(n + 1).fill('∞');
+        dp[0] = 0;
+
+        function init() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for(let i=0; i<=n; i++) {
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.id = `node-${i}`;
+                if (squares.includes(i)) node.classList.add('square');
+                node.innerHTML = `<span class="val" id="val-${i}">${dp[i]}</span><span class="idx">h=${i}</span>`;
+                grid.appendChild(node);
+            }
+        }
+
+        async function nextStep() {
+            if (step >= n) return;
+            step++;
+            const status = document.getElementById('status');
+            
+            document.querySelectorAll('.node').forEach(node => node.classList.remove('active', 'source'));
+            const currentNode = document.getElementById(`node-${step}`);
+            currentNode.classList.add('active');
+
+            let minCount = Infinity;
+            status.innerText = `正在计算高度 ${step}。尝试减去积木...`;
+
+            for (let s of squares) {
+                if (step >= s) {
+                    const prevIdx = step - s;
+                    const prevNode = document.getElementById(`node-${prevIdx}`);
+                    prevNode.classList.add('source');
+                    
+                    const count = Number(dp[prevIdx]) + 1;
+                    if (count < minCount) minCount = count;
+                    
+                    status.innerText = `试放 ${s} 积木：需要高度 ${prevIdx} 的最优解 (${dp[prevIdx]}) + 1 块 = ${count}`;
+                    await new Promise(r => setTimeout(r, 600));
+                    prevNode.classList.remove('source');
+                }
+            }
+
+            dp[step] = minCount;
+            document.getElementById(`val-${step}`).innerText = minCount;
+            status.innerText = `高度 ${step} 的最省力方案是：${minCount} 块积木。`;
+
+            if (step === n) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerText = `大功告成！拼出高度 ${n} 最少需要 ${minCount} 块积木。`;
+            }
+        }
+
+        function reset() {
+            step = 0; dp = Array(n + 1).fill('∞'); dp[0] = 0;
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "拼出目标数字 13，准备出发！";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

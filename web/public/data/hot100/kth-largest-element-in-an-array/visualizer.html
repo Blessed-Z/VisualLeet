@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { 
+            font-family: "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            padding: 20px; 
+            color: #f8fafc; 
+            overflow-x: hidden;
+        }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 30px; width: 100%; max-width: 800px; margin: 0 auto; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 15px 25px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            min-height: 40px;
+            font-size: 1.1rem;
+            color: var(--amber);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        /* Tree Visualization */
+        .tree-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+        }
+        .node {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            background: var(--box-bg);
+            border: 2px solid #475569;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
+        }
+        .node.highlight { border-color: var(--amber); box-shadow: 0 0 15px var(--amber); transform: scale(1.1); }
+        .node.swapping { border-color: var(--rose); background: rgba(236, 72, 153, 0.2); }
+        .node.sorted { border-color: var(--emerald); background: rgba(16, 185, 129, 0.1); color: #94a3b8; }
+        .node.top-k { border-color: var(--purple); background: rgba(139, 92, 246, 0.2); box-shadow: 0 0 20px var(--purple); }
+
+        svg.connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        line { stroke: #334155; stroke-width: 2; transition: all 0.5s; }
+        line.active { stroke: var(--amber); stroke-width: 3; }
+
+        /* Array Visualization */
+        .array-container { display: flex; gap: 8px; margin-top: 20px; }
+        .array-box {
+            width: 40px;
+            height: 40px;
+            background: var(--box-bg);
+            border: 2px solid #475569;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.4s;
+        }
+        .array-box .val { font-size: 1rem; font-weight: bold; }
+        .array-box .idx { font-size: 0.6rem; color: #64748b; position: absolute; bottom: -18px; }
+        .array-box.highlight { border-color: var(--amber); background: rgba(245, 158, 11, 0.1); }
+        .array-box.sorted { border-color: var(--emerald); opacity: 0.5; }
+
+        .controls { display: flex; gap: 15px; margin-top: 20px; }
+        button {
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: none;
+            background: #334155;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-1px); }
+        button:active:not(:disabled) { transform: translateY(0); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button.primary { background: var(--purple); }
+        button.primary:hover { background: #7c3aed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">准备开始寻找第 2 大元素</div>
+        
+        <div class="tree-container" id="tree-area">
+            <svg class="connections" id="svg-area"></svg>
+            <!-- Nodes will be injected here -->
+        </div>
+
+        <div class="array-container" id="array-area"></div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const initialNums = [3, 2, 1, 5, 6, 4];
+        const k = 2;
+        let nums = [...initialNums];
+        let state = 'init'; // init, building, extracting, finished
+        let buildIdx = Math.floor(nums.length / 2) - 1;
+        let extractCount = 0;
+        let heapSize = nums.length;
+        let currentHeapifyIdx = -1;
+        let swapPair = [];
+
+        function getPos(idx, total) {
+            const level = Math.floor(Math.log2(idx + 1));
+            const posInLevel = idx - (Math.pow(2, level) - 1);
+            const nodesInLevel = Math.pow(2, level);
+            const x = (posInLevel + 0.5) * (100 / nodesInLevel);
+            const y = level * 80 + 40;
+            return { x, y };
+        }
+
+        function init() {
+            render();
+        }
+
+        function render() {
+            const treeArea = document.getElementById('tree-area');
+            const svgArea = document.getElementById('svg-area');
+            const arrayArea = document.getElementById('array-area');
+            
+            // Clear
+            treeArea.querySelectorAll('.node').forEach(n => n.remove());
+            svgArea.innerHTML = '';
+            arrayArea.innerHTML = '';
+
+            // Render Array
+            nums.forEach((n, i) => {
+                const box = document.createElement('div');
+                box.className = `array-box ${i >= heapSize ? 'sorted' : ''} ${swapPair.includes(i) ? 'highlight' : ''}`;
+                box.innerHTML = `<span class="val">${n}</span><span class="idx">${i}</span>`;
+                arrayArea.appendChild(box);
+            });
+
+            // Render Tree Connections
+            for (let i = 0; i < heapSize; i++) {
+                const left = 2 * i + 1;
+                const right = 2 * i + 2;
+                const p1 = getPos(i, nums.length);
+                
+                if (left < heapSize) {
+                    const p2 = getPos(left, nums.length);
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', `${p1.x}%`);
+                    line.setAttribute('y1', p1.y);
+                    line.setAttribute('x2', `${p2.x}%`);
+                    line.setAttribute('y2', p2.y);
+                    if (swapPair.includes(i) && swapPair.includes(left)) line.classList.add('active');
+                    svgArea.appendChild(line);
+                }
+                if (right < heapSize) {
+                    const p2 = getPos(right, nums.length);
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', `${p1.x}%`);
+                    line.setAttribute('y1', p1.y);
+                    line.setAttribute('x2', `${p2.x}%`);
+                    line.setAttribute('y2', p2.y);
+                    if (swapPair.includes(i) && swapPair.includes(right)) line.classList.add('active');
+                    svgArea.appendChild(line);
+                }
+            }
+
+            // Render Tree Nodes
+            nums.forEach((n, i) => {
+                const p = getPos(i, nums.length);
+                const node = document.createElement('div');
+                node.className = `node ${i >= heapSize ? 'sorted' : ''} ${swapPair.includes(i) ? 'swapping' : ''} ${i === currentHeapifyIdx ? 'highlight' : ''}`;
+                if (state === 'finished' && i === 0) node.classList.add('top-k');
+                node.style.left = `calc(${p.x}% - 22px)`;
+                node.style.top = `${p.y - 22}px`;
+                node.innerText = n;
+                treeArea.appendChild(node);
+            });
+        }
+
+        function heapify(idx, size) {
+            let max = idx;
+            const left = 2 * idx + 1;
+            const right = 2 * idx + 2;
+            if (left < size && nums[left] > nums[max]) max = left;
+            if (right < size && nums[right] > nums[max]) max = right;
+            if (max !== idx) {
+                swapPair = [idx, max];
+                [nums[idx], nums[max]] = [nums[max], nums[idx]];
+                return max;
+            }
+            return -1;
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            swapPair = [];
+
+            if (state === 'init') {
+                state = 'building';
+                status.innerText = `第一步：原地构建大顶堆。从 index ${buildIdx} 开始。`;
+                currentHeapifyIdx = buildIdx;
+                render();
+                return;
+            }
+
+            if (state === 'building') {
+                let nextIdx = heapify(currentHeapifyIdx, heapSize);
+                if (nextIdx !== -1) {
+                    status.innerText = `下沉调整：交换 ${nums[nextIdx]} 和 ${nums[currentHeapifyIdx]}`;
+                    currentHeapifyIdx = nextIdx;
+                } else {
+                    buildIdx--;
+                    if (buildIdx >= 0) {
+                        status.innerText = `继续构建：堆化 index ${buildIdx}`;
+                        currentHeapifyIdx = buildIdx;
+                    } else {
+                        state = 'extracting';
+                        status.innerText = `大顶堆构建完成！现在开始提取前 ${k-1} 个最大值。`;
+                        currentHeapifyIdx = -1;
+                    }
+                }
+                render();
+                return;
+            }
+
+            if (state === 'extracting') {
+                if (extractCount < k - 1) {
+                    if (currentHeapifyIdx === -1) {
+                        // Swap top with last
+                        status.innerText = `提取最大值 ${nums[0]}，换到末尾 index ${heapSize-1}`;
+                        swapPair = [0, heapSize - 1];
+                        [nums[0], nums[heapSize - 1]] = [nums[heapSize - 1], nums[0]];
+                        heapSize--;
+                        currentHeapifyIdx = 0;
+                    } else {
+                        let nextIdx = heapify(currentHeapifyIdx, heapSize);
+                        if (nextIdx !== -1) {
+                            status.innerText = `下沉调整：恢复堆性质`;
+                            currentHeapifyIdx = nextIdx;
+                        } else {
+                            extractCount++;
+                            currentHeapifyIdx = -1;
+                            if (extractCount === k - 1) {
+                                state = 'finished';
+                                status.innerText = `恭喜！已提取 ${k-1} 个大王，现在的堆顶就是第 ${k} 大：${nums[0]}`;
+                                document.getElementById('next-btn').disabled = true;
+                            } else {
+                                status.innerText = `继续提取下一个大王...`;
+                            }
+                        }
+                    }
+                }
+                render();
+                return;
+            }
+        }
+
+        function reset() {
+            nums = [...initialNums];
+            state = 'init';
+            buildIdx = Math.floor(nums.length / 2) - 1;
+            extractCount = 0;
+            heapSize = nums.length;
+            currentHeapifyIdx = -1;
+            swapPair = [];
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = `准备开始寻找第 ${k} 大元素`;
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

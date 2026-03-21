@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>39. 组合总和 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--amber); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 300px 1fr; gap: 30px; min-height: 500px; }
+
+        /* Energy Bar */
+        .energy-panel {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 30px;
+        }
+        .target-circle {
+            width: 150px; height: 150px; border-radius: 50%;
+            border: 8px solid #30363d; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; position: relative;
+            background: radial-gradient(circle, #161b22 0%, #0d1117 100%);
+        }
+        .target-circle .val { font-size: 3em; font-weight: 800; color: var(--amber); }
+        .target-circle .label { font-size: 0.7em; color: #8b949e; text-transform: uppercase; }
+        
+        .progress-container {
+            width: 100%; height: 20px; background: #0d1117; border-radius: 10px;
+            border: 1px solid #30363d; overflow: hidden; position: relative;
+        }
+        .progress-bar {
+            height: 100%; background: linear-gradient(90deg, var(--primary-purple), var(--rose-red));
+            width: 0%; transition: width 0.5s ease;
+        }
+
+        /* Tree Area */
+        .tree-area {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            position: relative; overflow: visible; padding: 20px;
+        }
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.4s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; }
+        .node.active circle { stroke: var(--amber); stroke-width: 4; }
+        .node.pruned circle { stroke: var(--rose-red); opacity: 0.5; }
+        .node.success circle { stroke: var(--emerald-green); stroke-width: 4; fill: rgba(6, 214, 160, 0.2); }
+
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.4s; }
+        .link.pruned { stroke: var(--rose-red); opacity: 0.3; stroke-dasharray: 5; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+
+        .candidate-list { display: flex; gap: 10px; margin-top: 20px; }
+        .cand {
+            padding: 5px 12px; border: 1px solid #30363d; border-radius: 8px;
+            font-size: 0.9em; background: #161b22;
+        }
+        .cand.active { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 10px var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 组合总和：精准凑数</h1>
+        <div class="status-box">
+            <div id="status">目标金额: <span style="color:var(--amber); font-weight:bold;">7</span>，候选硬币: [2, 3, 6, 7]</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">我们将使用回溯算法，尝试每一个硬币组合。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="energy-panel">
+                <div class="target-circle">
+                    <div class="label">当前剩余</div>
+                    <div class="val" id="remain-val">7</div>
+                </div>
+                <div style="width:100%">
+                    <div class="panel-title">已凑金额进度</div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                </div>
+                <div class="panel-title">候选硬币 (Candidates)</div>
+                <div class="candidate-list" id="candidates"></div>
+            </div>
+
+            <div class="tree-area" id="viz">
+                <svg id="tree-svg"></svg>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const candidates = [2, 3, 6, 7];
+        const target = 7;
+        let steps = [];
+        let currentStep = 0;
+
+        function solve() {
+            const res = [];
+            const path = [];
+            const treeNodes = [{ id: 'root', val: 'Start', remain: target, parentId: null }];
+            
+            function backtrack(remain, start, parentId) {
+                if (remain === 0) {
+                    res.push([...path]);
+                    steps.push({ type: 'SUCCESS', remain, path: [...path], nodeId: parentId });
+                    return;
+                }
+
+                for (let i = start; i < candidates.length; i++) {
+                    const c = candidates[i];
+                    const nodeId = `r${remain}-c${c}-${Math.random()}`;
+                    
+                    if (remain - c < 0) {
+                        treeNodes.push({ id: nodeId, val: c, remain: remain - c, parentId, pruned: true });
+                        steps.push({ type: 'PRUNE', remain, val: c, nodeId, path: [...path] });
+                        break; // 数组已排序，后续必超标
+                    }
+
+                    treeNodes.push({ id: nodeId, val: c, remain: remain - c, parentId, pruned: false });
+                    path.push(c);
+                    steps.push({ type: 'ENTER', remain: remain - c, val: c, nodeId, path: [...path] });
+                    
+                    backtrack(remain - c, i, nodeId);
+                    
+                    path.pop();
+                    steps.push({ type: 'BACK', remain, val: c, nodeId: parentId, path: [...path] });
+                }
+            }
+            backtrack(target, 0, 'root');
+            return treeNodes;
+        }
+
+        const treeNodes = solve();
+        const svg = document.getElementById('tree-svg');
+
+        function render() {
+            svg.innerHTML = '';
+            const step = steps[currentStep];
+            
+            // Sync Panels
+            document.getElementById('remain-val').innerText = step.remain;
+            const progress = ((target - step.remain) / target) * 100;
+            document.getElementById('progress-bar').style.width = `${Math.min(progress, 100)}%`;
+            if (step.remain < 0) document.getElementById('progress-bar').style.background = 'var(--rose-red)';
+            else document.getElementById('progress-bar').style.background = '';
+
+            const candBox = document.getElementById('candidates');
+            candBox.innerHTML = '';
+            candidates.forEach(c => {
+                const div = document.createElement('div');
+                div.className = `cand ${step.val === c ? 'active' : ''}`;
+                div.innerText = c;
+                candBox.appendChild(div);
+            });
+
+            // Layout Tree
+            const coords = new Map();
+            const levelCounts = {};
+            treeNodes.forEach(n => {
+                const depth = n.id.startsWith('root') ? 0 : (target - n.remain); // Rough depth
+                const level = Math.floor(depth / 2); // Group by progress
+                levelCounts[level] = (levelCounts[level] || 0) + 1;
+                const x = (levelCounts[level] - 1) * 100 - 150;
+                const y = level * 80 + 50;
+                coords.set(n.id, { x, y });
+            });
+
+            // Draw Links & Nodes (same pattern as before)
+            treeNodes.forEach(n => {
+                const nodeIdx = steps.findIndex(s => s.nodeId === n.id);
+                if (nodeIdx !== -1 && nodeIdx <= currentStep) {
+                    if (n.parentId && coords.has(n.parentId)) {
+                        const s = coords.get(n.parentId);
+                        const t = coords.get(n.id);
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', s.x); line.setAttribute('y1', s.y);
+                        line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+                        line.setAttribute('class', `link ${n.pruned ? 'pruned' : ''}`);
+                        svg.appendChild(line);
+                    }
+                    const pos = coords.get(n.id);
+                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    g.setAttribute('class', `node ${step.nodeId === n.id ? 'active' : ''} ${n.pruned ? 'pruned' : ''} ${n.remain === 0 ? 'success' : ''}`);
+                    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    c.setAttribute('cx', pos.x); c.setAttribute('cy', pos.y); c.setAttribute('r', 18);
+                    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    t.setAttribute('x', pos.x); t.setAttribute('y', pos.y); t.textContent = n.val;
+                    g.appendChild(c); g.appendChild(t);
+                    svg.appendChild(g);
+                }
+            });
+
+            svg.setAttribute('viewBox', `-300 0 600 500`);
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                const step = steps[currentStep];
+                const status = document.getElementById('status');
+                const subStatus = document.getElementById('sub-status');
+
+                if (step.type === 'ENTER') {
+                    status.innerHTML = `投入硬币 <span class="highlight-text">${step.val}</span>`;
+                    subStatus.innerText = `剩余金额减少到 ${step.remain}。`;
+                } else if (step.type === 'PRUNE') {
+                    status.innerHTML = `🚨 <b>触发剪枝！</b>`;
+                    subStatus.innerHTML = `投入 ${step.val} 后总额超标了（剩余 ${step.remain}），由于数组已排序，后面的硬币也肯定超标，直接放弃这根树枝。`;
+                } else if (step.type === 'SUCCESS') {
+                    status.innerHTML = `🎊 <b>凑齐了！</b>`;
+                    subStatus.innerText = `当前路径 ${JSON.stringify(step.path)} 的总和正好等于 ${target}。`;
+                } else {
+                    status.innerHTML = `回溯：取出硬币，回到剩余金额为 ${step.remain} 的状态。`;
+                }
+                render();
+            } else {
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; render(); }
+        window.onload = render;
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "id": 94,
+  "title": "二叉树的中序遍历",
+  "slug": "binary-tree-inorder-traversal",
+  "difficulty": "Easy",
+  "category": "二叉树",
+  "tags": ["Tree", "Depth-First Search", "Binary Tree", "Stack"],
+  "description": "给定一个二叉树的根节点 root ，返回它的中序遍历。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "迭代栈实现",
+      "time": "O(n)",
+      "space": "O(n)"
+    }
+  ]
+}

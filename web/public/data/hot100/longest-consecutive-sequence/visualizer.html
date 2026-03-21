@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #09090b; margin: 0; padding: 20px; color: #fff; overflow-x: hidden; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        
+        .array-view { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; border: 1px solid #27272a; padding: 15px; border-radius: 20px; background: rgba(24, 24, 27, 0.5); }
+        .num-box { width: 45px; height: 45px; border: 1px solid #3f3f46; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: all 0.3s; position: relative; }
+        .in-set { background: rgba(167, 139, 250, 0.1); border-color: #a78bfa; }
+        .is-start { border-color: #fbbf24; background: rgba(251, 191, 36, 0.1); transform: scale(1.1); box-shadow: 0 0 15px rgba(251, 191, 36, 0.3); }
+        .is-counting { border-color: #10b981; background: rgba(16, 185, 129, 0.2); }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 500px; }
+        .stat-card { background: #18181b; border: 1px solid #27272a; padding: 15px; border-radius: 16px; text-align: center; }
+        .stat-val { font-size: 1.5rem; font-weight: bold; font-mono; color: #a78bfa; }
+        .stat-label { font-size: 0.7rem; color: #71717a; text-transform: uppercase; margin-top: 4px; }
+
+        .status-card { background: #18181b; border: 1px solid #27272a; padding: 12px 20px; border-radius: 16px; width: 100%; max-width: 500px; text-align: center; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+        .status-text { font-size: 0.85rem; color: #a1a1aa; line-height: 1.5; }
+        .highlight { color: #fbbf24; font-weight: bold; }
+
+        .controls { display: flex; gap: 12px; margin-top: 10px; }
+        button { padding: 8px 24px; border-radius: 12px; border: 1px solid #27272a; background: #18181b; color: #e4e4e7; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+        button:hover { background: #27272a; border-color: #3f3f46; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！先看哪些数字在魔法口袋里。</div>
+        </div>
+
+        <div class="array-view" id="num-set-display"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div id="current-streak" class="stat-val">0</div>
+                <div class="stat-label">当前序列长度</div>
+            </div>
+            <div class="stat-card">
+                <div id="max-streak" class="stat-val" style="color: #10b981;">0</div>
+                <div class="stat-label">历史最长记录</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [100, 4, 200, 1, 3, 2];
+        const numSet = new Set(nums);
+        const setElements = Array.from(numSet);
+        let iteratorIndex = 0;
+        let countingNum = null;
+        let currentStreak = 0;
+        let maxStreak = 0;
+        let mode = 'finding_start'; // 'finding_start' or 'counting'
+
+        function init() {
+            const display = document.getElementById('num-set-display');
+            display.innerHTML = '';
+            setElements.forEach((n, i) => {
+                const div = document.createElement('div');
+                div.className = 'num-box in-set';
+                div.id = `num-${n}`;
+                div.innerText = n;
+                display.appendChild(div);
+            });
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            
+            if (mode === 'finding_start') {
+                if (iteratorIndex >= setElements.length) {
+                    status.innerHTML = "🎉 所有的数字都看过了！任务圆满完成。";
+                    document.getElementById('next-btn').disabled = true;
+                    return;
+                }
+
+                const num = setElements[iteratorIndex];
+                resetHighlights();
+                document.getElementById(`num-${num}`).classList.add('is-start');
+
+                if (!numSet.has(num - 1)) {
+                    status.innerHTML = `拿起数字 <span class="highlight">${num}</span>。问：口袋里有 <span class="highlight">${num-1}</span> 吗？没有！<br>它是序列的小队长！开始数数。`;
+                    mode = 'counting';
+                    countingNum = num;
+                    currentStreak = 1;
+                    updateUI();
+                } else {
+                    status.innerHTML = `拿起数字 <span class="highlight">${num}</span>。问：口袋里有 <span class="highlight">${num-1}</span> 吗？有！<br>它不是小队长，我们跳过它。`;
+                    iteratorIndex++;
+                }
+            } else if (mode === 'counting') {
+                const next = countingNum + 1;
+                if (numSet.has(next)) {
+                    document.getElementById(`num-${next}`).classList.add('is-counting');
+                    status.innerHTML = `口袋里有 <span class="highlight">${next}</span>！队伍人数加 1。`;
+                    countingNum = next;
+                    currentStreak++;
+                    updateUI();
+                } else {
+                    status.innerHTML = `口袋里没有 <span class="highlight">${next}</span> 了。这支队伍数完了。`;
+                    maxStreak = Math.max(maxStreak, currentStreak);
+                    currentStreak = 0;
+                    mode = 'finding_start';
+                    iteratorIndex++;
+                    updateUI();
+                }
+            }
+        }
+
+        function resetHighlights() {
+            document.querySelectorAll('.num-box').forEach(el => {
+                el.classList.remove('is-start', 'is-counting');
+            });
+        }
+
+        function updateUI() {
+            document.getElementById('current-streak').innerText = currentStreak;
+            document.getElementById('max-streak').innerText = maxStreak;
+        }
+
+        function reset() {
+            iteratorIndex = 0;
+            countingNum = null;
+            currentStreak = 0;
+            maxStreak = 0;
+            mode = 'finding_start';
+            updateUI();
+            status.innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

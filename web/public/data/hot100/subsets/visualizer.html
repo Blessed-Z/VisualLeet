@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>78. 子集 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--emerald-green); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; min-height: 450px; }
+
+        .viz-card {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 25px; position: relative; display: flex; flex-direction: column; align-items: center;
+        }
+
+        .basket {
+            width: 250px; height: 150px; border: 4px solid var(--amber);
+            border-radius: 0 0 50px 50px; position: relative; margin-top: 50px;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            background: rgba(255, 190, 11, 0.05);
+        }
+        .basket::before {
+            content: ''; position: absolute; top: -45px; left: 50%; transform: translateX(-50%);
+            width: 120px; height: 80px; border: 4px solid var(--amber); border-bottom: none;
+            border-radius: 60px 60px 0 0;
+        }
+
+        .fruit {
+            width: 45px; height: 45px; border-radius: 12px; background: var(--node-bg);
+            border: 2px solid var(--primary-purple); display: flex; align-items: center;
+            justify-content: center; font-weight: bold; font-size: 1.2em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .res-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px; width: 100%;
+        }
+        .subset-snapshot {
+            padding: 10px; background: rgba(6, 214, 160, 0.1);
+            border: 1px solid rgba(6, 214, 160, 0.2); border-radius: 10px;
+            font-size: 0.8em; text-align: center; font-family: monospace;
+            animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .source-array { display: flex; gap: 15px; margin-bottom: 30px; }
+        .source-item {
+            width: 50px; height: 50px; border: 2px solid #30363d; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+            transition: all 0.3s;
+        }
+        .source-item.active { border-color: var(--amber); box-shadow: 0 0 15px var(--amber); transform: translateY(-5px); }
+        .source-item.disabled { opacity: 0.2; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧺 子集：我的魔法野餐篮</h1>
+        <div class="status-box">
+            <div id="status">准备开始收集子集。数组: <span style="color:var(--amber)">[1, 2, 3]</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">回溯算法将遍历“放”与“不放”的所有可能。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="viz-card">
+                <div class="panel-title">当前挑选过程</div>
+                <div class="source-array" id="source-array"></div>
+                <div class="basket" id="basket"></div>
+                <div style="margin-top: 20px; color: var(--amber); font-weight: bold;">我的野餐篮 (path)</div>
+            </div>
+
+            <div class="viz-card">
+                <div class="panel-title">收集箱 (res)</div>
+                <div class="res-grid" id="res-grid"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [1, 2, 3];
+        let steps = [];
+        let currentStep = 0;
+
+        function solve() {
+            const res = [];
+            const path = [];
+            
+            function backtrack(index) {
+                // 每进入一次递归，当前的 path 就是一个子集
+                steps.push({ type: 'SAVE', path: [...path], res: [...res], index });
+                res.push([...path]);
+
+                for (let i = index; i < nums.length; i++) {
+                    steps.push({ type: 'PICK', path: [...path], res: [...res], index: i });
+                    path.push(nums[i]);
+                    
+                    backtrack(i + 1);
+                    
+                    path.pop();
+                    steps.push({ type: 'BACK', path: [...path], res: [...res], index: i });
+                }
+            }
+            backtrack(0);
+        }
+
+        solve();
+
+        function render() {
+            const step = steps[currentStep];
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            // Render Source Array
+            const sourceContainer = document.getElementById('source-array');
+            sourceContainer.innerHTML = '';
+            nums.forEach((n, i) => {
+                const div = document.createElement('div');
+                div.className = `source-item ${step.index === i ? 'active' : ''} ${i < step.index && step.type !== 'SAVE' ? 'disabled' : ''}`;
+                div.innerText = n;
+                sourceContainer.appendChild(div);
+            });
+
+            // Render Basket
+            const basket = document.getElementById('basket');
+            basket.innerHTML = '';
+            step.path.forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'fruit';
+                div.innerText = n;
+                basket.appendChild(div);
+            });
+
+            // Render Result Grid
+            const resGrid = document.getElementById('res-grid');
+            resGrid.innerHTML = '';
+            step.res.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'subset-snapshot';
+                div.innerText = r.length ? `[${r.join(',')}]` : '[]';
+                resGrid.appendChild(div);
+            });
+
+            if (step.type === 'SAVE') {
+                status.innerHTML = `📦 <b>保存当前组合！</b>`;
+                subStatus.innerText = `当前的篮子状态 ${JSON.stringify(step.path)} 是一个合法的子集，存入收集箱。`;
+            } else if (step.type === 'PICK') {
+                status.innerHTML = `挑选水果：<span style="color:var(--amber)">${nums[step.index]}</span>`;
+                subStatus.innerText = `把它放进篮子里看看会产生什么样的新组合。`;
+            } else {
+                status.innerHTML = `取出水果：<span style="color:var(--rose-red)">${nums[step.index]}</span>`;
+                subStatus.innerText = `撤销选择，准备尝试其他水果。`;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            } else {
+                document.getElementById('next-btn').disabled = true;
+                document.getElementById('status').innerHTML = "🎉 <b>子集收集完成！</b>";
+            }
+        }
+
+        function reset() {
+            currentStep = 0;
+            document.getElementById('next-btn').disabled = false;
+            render();
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>

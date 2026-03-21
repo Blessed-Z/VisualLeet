@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>139. 单词拆分 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .word-display {
+            display: flex;
+            gap: 5px;
+            font-size: 24px;
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .char-box {
+            width: 40px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .dp-display {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .dp-box {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            background: #1c2128;
+        }
+
+        .dp-box.true { background: var(--primary-purple); color: white; border-color: var(--primary-purple); }
+        .dp-box.current { border: 2px solid var(--amber-yellow); transform: scale(1.1); }
+        .dp-box.check { border: 2px solid var(--emerald-green); }
+
+        .active-range {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--emerald-green);
+        }
+
+        .dict-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+        }
+
+        .dict-item {
+            padding: 4px 12px;
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .dict-item.match {
+            background: var(--emerald-green);
+            color: black;
+            font-weight: bold;
+        }
+
+        .status-text {
+            height: 50px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin: 15px 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .marker {
+            position: absolute;
+            top: -25px;
+            font-size: 14px;
+            color: var(--amber-yellow);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>139. 单词拆分 (Word Break)</h2>
+    
+    <div class="visualization-area">
+        <div class="word-display" id="wordDisplay"></div>
+        <div class="dp-display" id="dpDisplay"></div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始</div>
+
+    <div class="dict-area" id="dictDisplay"></div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const s = "leetcode";
+    const wordDict = ["leet", "code"];
+    const n = s.length;
+    let dp = new Array(n + 1).fill(false);
+    dp[0] = true;
+
+    let i = 1; // 终点
+    let j = 0; // 起点
+    let step = 0; // 0: 检查 dp[j], 1: 检查 s[j:i], 2: 更新 dp[i]
+
+    function init() {
+        const wordDisplay = document.getElementById('wordDisplay');
+        wordDisplay.innerHTML = '';
+        s.split('').forEach((char, idx) => {
+            const box = document.createElement('div');
+            box.className = 'char-box';
+            box.id = `char-${idx}`;
+            box.textContent = char;
+            wordDisplay.appendChild(box);
+        });
+
+        const dpDisplay = document.getElementById('dpDisplay');
+        dpDisplay.innerHTML = '';
+        for (let idx = 0; idx <= n; idx++) {
+            const box = document.createElement('div');
+            box.className = `dp-box ${idx === 0 ? 'true' : ''}`;
+            box.id = `dp-${idx}`;
+            box.textContent = idx === 0 ? 'T' : 'F';
+            dpDisplay.appendChild(box);
+        }
+
+        const dictDisplay = document.getElementById('dictDisplay');
+        dictDisplay.innerHTML = '';
+        wordDict.forEach(word => {
+            const item = document.createElement('div');
+            item.className = 'dict-item';
+            item.id = `dict-${word}`;
+            item.textContent = word;
+            dictDisplay.appendChild(item);
+        });
+
+        i = 1;
+        j = 0;
+        step = 0;
+        dp = new Array(n + 1).fill(false);
+        dp[0] = true;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '准备就绪，点击下一步开始循环';
+    }
+
+    function updateView() {
+        // Clear highlights
+        document.querySelectorAll('.char-box').forEach(b => b.className = 'char-box');
+        document.querySelectorAll('.dp-box').forEach(b => b.classList.remove('current', 'check'));
+        document.querySelectorAll('.dict-item').forEach(i => i.classList.remove('match'));
+
+        const currentDP = document.getElementById(`dp-${i}`);
+        currentDP.classList.add('current');
+
+        const checkDP = document.getElementById(`dp-${j}`);
+        checkDP.classList.add('check');
+
+        const status = document.getElementById('status');
+        const substring = s.substring(j, i);
+
+        if (step === 0) {
+            status.textContent = `检查 dp[${j}] 是否为 True...`;
+            if (dp[j]) {
+                status.textContent += " 是的！";
+            } else {
+                status.textContent += " 不，跳过。";
+            }
+        } else if (step === 1) {
+            status.textContent = `检查子串 "${substring}" (s[${j}:${i}]) 是否在字典中...`;
+            for (let k = j; k < i; k++) {
+                document.getElementById(`char-${k}`).classList.add('active-range');
+            }
+            if (wordDict.includes(substring)) {
+                status.textContent += " 找到了！✨";
+                document.getElementById(`dict-${substring}`).classList.add('match');
+            } else {
+                status.textContent += " 没找到。";
+            }
+        } else if (step === 2) {
+            if (dp[j] && wordDict.includes(substring)) {
+                dp[i] = true;
+                currentDP.classList.add('true');
+                currentDP.textContent = 'T';
+                status.textContent = `拼凑成功！标记 dp[${i}] = True`;
+            } else {
+                status.textContent = `目前无法通过切割点 ${j} 拼凑 dp[${i}]`;
+            }
+        }
+    }
+
+    function next() {
+        if (i > n) return;
+
+        updateView();
+
+        if (step === 0) {
+            if (dp[j]) {
+                step = 1;
+            } else {
+                moveToNextJ();
+            }
+        } else if (step === 1) {
+            step = 2;
+        } else if (step === 2) {
+            if (dp[i]) {
+                moveToNextI();
+            } else {
+                moveToNextJ();
+            }
+        }
+    }
+
+    function moveToNextJ() {
+        j++;
+        if (j >= i) {
+            moveToNextI();
+        } else {
+            step = 0;
+        }
+    }
+
+    function moveToNextI() {
+        i++;
+        j = 0;
+        step = 0;
+        if (i > n) {
+            document.getElementById('nextBtn').disabled = true;
+            document.getElementById('status').textContent = `遍历结束！最终结果为: ${dp[n]}`;
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

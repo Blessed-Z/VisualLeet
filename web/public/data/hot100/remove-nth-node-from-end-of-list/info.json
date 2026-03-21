@@ -1,0 +1,17 @@
+{
+  "id": 19,
+  "title": "19. 删除链表的倒数第 N 个节点",
+  "slug": "remove-nth-node-from-end-of-list",
+  "link": "https://leetcode.cn/problems/remove-nth-node-from-end-of-list/",
+  "difficulty": "Medium",
+  "description": "给你一个链表，删除链表的倒数第 n 个结点，并且返回链表的头结点。",
+  "solutions": [
+    {
+      "name": "快慢指针 (最优)",
+      "file": "fast-slow.py",
+      "time": "O(N)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

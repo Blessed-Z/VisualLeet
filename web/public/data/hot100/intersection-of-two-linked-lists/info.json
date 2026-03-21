@@ -1,0 +1,17 @@
+{
+  "id": 160,
+  "title": "160. 相交链表",
+  "slug": "intersection-of-two-linked-lists",
+  "link": "https://leetcode.cn/problems/intersection-of-two-linked-lists/",
+  "difficulty": "Easy",
+  "description": "给你两个单链表的头节点 headA 和 headB ，请你找出并返回两个单链表相交的起始节点。如果两个链表不存在相交节点，返回 null 。",
+  "solutions": [
+    {
+      "name": "双指针等长法 (最优)",
+      "file": "two-pointers.py",
+      "time": "O(N + M)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": 155,
+  "slug": "min-stack",
+  "title": "最小栈",
+  "difficulty": "Medium",
+  "category": "栈",
+  "tags": ["Stack", "Design"],
+  "description": "设计一个支持 push ，pop ，top 操作，并能在常数时间内检索到最小元素的栈。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "辅助栈同步法",
+      "time": "O(1)",
+      "space": "O(N)"
+    }
+  ]
+}

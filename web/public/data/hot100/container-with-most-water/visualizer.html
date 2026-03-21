@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #09090b; margin: 0; padding: 20px; color: #fff; overflow-x: hidden; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        
+        .chart-area { position: relative; width: 600px; height: 300px; border-bottom: 2px solid #3f3f46; margin-top: 40px; display: flex; align-items: flex-end; justify-content: space-around; padding: 0 20px; }
+        .bar { width: 15px; background: #3f3f46; border-radius: 4px 4px 0 0; transition: all 0.5s; position: relative; }
+        .bar-active { background: #a78bfa; box-shadow: 0 0 15px rgba(167, 139, 250, 0.5); }
+        .bar-label { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; color: #71717a; }
+        
+        #water-layer { position: absolute; bottom: 0; background: rgba(59, 130, 246, 0.3); border: 1px solid rgba(59, 130, 246, 0.5); transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 4px 4px 0 0; }
+        
+        .pointer { position: absolute; top: -45px; display: flex; flex-direction: column; align-items: center; transition: all 0.5s; }
+        .pointer-label { font-size: 0.6rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; color: #fff; text-transform: uppercase; }
+        .pointer-arrow { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid currentColor; }
+
+        .status-card { background: #18181b; border: 1px solid #27272a; padding: 15px 25px; border-radius: 20px; width: 100%; max-width: 550px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; }
+        .status-text { font-size: 0.85rem; color: #a1a1aa; line-height: 1.6; }
+        .highlight { color: #3b82f6; font-weight: bold; }
+
+        .controls { display: flex; gap: 12px; }
+        button { padding: 10px 28px; border-radius: 14px; border: 1px solid #27272a; background: #18181b; color: #e4e4e7; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        button:hover { background: #27272a; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        
+        .area-badge { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; padding: 4px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！左右守卫分别从两端向中间靠拢。</div>
+        </div>
+
+        <div class="chart-area" id="chart">
+            <div class="area-badge" id="area-val">AREA: 0</div>
+            <div id="water-layer"></div>
+            <!-- Bars will be injected here -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const heights = [1, 8, 6, 2, 5, 4, 8, 3, 7];
+        let i = 0;
+        let j = heights.length - 1;
+        let maxArea = 0;
+
+        function init() {
+            const chart = document.getElementById('chart');
+            const oldBars = chart.querySelectorAll('.bar');
+            oldBars.forEach(b => b.remove());
+
+            heights.forEach((h, idx) => {
+                const div = document.createElement('div');
+                div.className = 'bar';
+                div.id = `bar-${idx}`;
+                div.style.height = `${h * 25}px`; // Scale for visibility
+                div.innerHTML = `<div class="bar-label">${h}</div>`;
+                chart.appendChild(div);
+            });
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI() {
+            const chart = document.getElementById('chart');
+            const bars = chart.querySelectorAll('.bar');
+            bars.forEach((b, idx) => {
+                b.classList.remove('bar-active');
+                if (idx === i || idx === j) b.classList.add('bar-active');
+            });
+
+            // Update water layer
+            const water = document.getElementById('water-layer');
+            const barI = document.getElementById(`bar-${i}`);
+            const barJ = document.getElementById(`bar-${j}`);
+            
+            const left = barI.offsetLeft;
+            const right = barJ.offsetLeft + barJ.offsetWidth;
+            const width = right - left;
+            const height = Math.min(heights[i], heights[j]) * 25;
+
+            water.style.left = `${left}px`;
+            water.style.width = `${width}px`;
+            water.style.height = `${height}px`;
+
+            const currentArea = (j - i) * Math.min(heights[i], heights[j]);
+            maxArea = Math.max(maxArea, currentArea);
+            document.getElementById('area-val').innerText = `CURRENT: ${currentArea} | MAX: ${maxArea}`;
+        }
+
+        function nextStep() {
+            if (i >= j) return;
+            const status = document.getElementById('status');
+            
+            const hI = heights[i];
+            const hJ = heights[j];
+            const area = (j - i) * Math.min(hI, hJ);
+
+            if (hI < hJ) {
+                status.innerHTML = `左边板子高 <span class="highlight">${hI}</span>，右边板子高 <span class="highlight">${hJ}</span>。<br>左边更矮，为了找更大的面积，左守卫向右移！`;
+                i++;
+            } else {
+                status.innerHTML = `左边板子高 <span class="highlight">${hI}</span>，右边板子高 <span class="highlight">${hJ}</span>。<br>右边更矮（或一样），右守卫向左移！`;
+                j--;
+            }
+
+            updateUI();
+
+            if (i >= j) {
+                status.innerHTML = `🎉 守卫碰头了！我们找到的最大储水量是 <span class="highlight" style="color:#10b981">${maxArea}</span>。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function reset() {
+            i = 0;
+            j = heights.length - 1;
+            maxArea = 0;
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

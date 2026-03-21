@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>437. 路径总和 III 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+        .visualization-area {
+            position: relative; height: 450px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
+        .panel-box {
+            background: var(--node-bg); border: 1px solid #30363d; border-radius: 15px; padding: 15px;
+        }
+        .panel-title { font-size: 0.8em; color: #8b949e; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; }
+
+        .prefix-item {
+            display: flex; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #30363d; font-size: 0.9em;
+        }
+        .prefix-item.highlight { background: rgba(255, 190, 11, 0.2); border-color: var(--amber); }
+
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.4s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+        
+        .node.active circle { stroke: var(--primary-purple); stroke-width: 4; fill: rgba(157, 78, 221, 0.1); }
+        .node.target-segment circle { stroke: var(--amber); stroke-width: 5; box-shadow: 0 0 15px var(--amber); }
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.4s; }
+        .link.active { stroke: var(--primary-purple); stroke-width: 3; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .count-badge { background: var(--rose-red); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.9em; font-weight: bold; }
+        .highlight-text { font-weight: bold; padding: 0 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ 路径总和 III (精修复版)</h1>
+        <div class="status-box">
+            <div id="status">准备开始探险！我们要找和为 <span class="amber highlight-text">8</span> 的路径。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始遍历二叉树。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="visualization-area" id="viz">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+                <svg id="tree-svg"></svg>
+            </div>
+
+            <div class="side-panel">
+                <div class="panel-box">
+                    <div class="panel-title">路径计算器</div>
+                    <div id="current-info" style="font-size: 0.9em; line-height: 2;">
+                        当前路径和 (s): <span id="cur-s" class="purple highlight-text">0</span><br>
+                        寻找补数 (s - 8): <span id="target-diff" class="rose highlight-text">-8</span><br>
+                        找到总数: <span id="ans-count" class="count-badge">0</span>
+                    </div>
+                </div>
+                <div class="panel-box">
+                    <div class="panel-title">前缀和账本 (Prefix Sum Map)</div>
+                    <div id="map-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const targetSum = 8;
+        // 简化树结构以便清晰演示
+        const treeData = {
+            val: 10, id: "0",
+            left: {
+                val: 5, id: "0L",
+                left: { val: 3, id: "0LL", left: { val: 3, id: "0LLL", left: null, right: null }, right: { val: -2, id: "0LLR", left: null, right: null } },
+                right: { val: 2, id: "0LR", left: null, right: { val: 1, id: "0LRR", left: null, right: null } }
+            },
+            right: {
+                val: -3, id: "0R",
+                left: null,
+                right: { val: 11, id: "0RR", left: null, right: null }
+            }
+        };
+
+        let nodes = [], links = [], steps = [], currentStep = 0, zoomFactor = 1.0;
+
+        function flatten(node, x, y, dx) {
+            if (!node) return;
+            const n = { ...node, x, y };
+            nodes.push(n);
+            if (node.left) {
+                links.push({ source: n, target: node.left.id, sid: node.id, tid: node.left.id });
+                flatten(node.left, x - dx, y + 80, dx / 2);
+            }
+            if (node.right) {
+                links.push({ source: n, target: node.right.id, sid: node.id, tid: node.right.id });
+                flatten(node.right, x + dx, y + 80, dx / 2);
+            }
+        }
+
+        let tempMap = { 0: 1 };
+        let tempAns = 0;
+        let currentFullPath = [];
+
+        function generateSteps(node, s) {
+            if (!node) return;
+            
+            const newS = s + node.val;
+            const diff = newS - targetSum;
+            currentFullPath.push({id: node.id, val: node.val, s: newS});
+            
+            const foundCount = tempMap[diff] || 0;
+            const stepAns = tempAns + foundCount;
+            
+            // 步骤：进入节点
+            steps.push({
+                type: 'ENTER',
+                node: node,
+                s: newS,
+                diff: diff,
+                foundCount: foundCount,
+                prefixMap: { ...tempMap },
+                ansSnapshot: stepAns,
+                activePath: currentFullPath.map(p => p.id)
+            });
+
+            tempAns = stepAns;
+            tempMap[newS] = (tempMap[newS] || 0) + 1;
+
+            generateSteps(node.left, newS);
+            generateSteps(node.right, newS);
+
+            // 回溯
+            tempMap[newS]--;
+            if (tempMap[newS] === 0) delete tempMap[newS];
+            currentFullPath.pop();
+
+            steps.push({
+                type: 'LEAVE',
+                node: node,
+                s: newS,
+                prefixMap: { ...tempMap },
+                ansSnapshot: tempAns,
+                activePath: currentFullPath.map(p => p.id)
+            });
+        }
+
+        function render() {
+            const svg = document.getElementById('tree-svg');
+            svg.innerHTML = '';
+            const step = steps[currentStep] || { activePath: [], prefixMap: {0:1}, ansSnapshot: 0, s: 0, diff: -8 };
+
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            nodes.forEach(n => {
+                minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+                minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+            });
+
+            links.forEach(l => {
+                const targetNode = nodes.find(n => n.id === l.tid);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', l.source.x); line.setAttribute('y1', l.source.y);
+                line.setAttribute('x2', targetNode.x); line.setAttribute('y2', targetNode.y);
+                const isActive = step.activePath.includes(l.sid) && step.activePath.includes(l.tid);
+                line.setAttribute('class', `link ${isActive ? 'active' : ''}`);
+                svg.appendChild(line);
+            });
+
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let cls = 'node';
+                if (step.node && step.node.id === n.id) cls += ' active';
+                // 如果当前正在“发现”路径，高亮整条路径段？这里简化为只高亮当前路径上的点
+                if (step.activePath.includes(n.id)) cls += ' in-path';
+                
+                g.setAttribute('class', cls);
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', 20);
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', n.x); t.setAttribute('y', n.y); t.textContent = n.val;
+                g.appendChild(c); g.appendChild(t);
+                svg.appendChild(g);
+            });
+
+            const width = Math.max(maxX - minX + 100, 400);
+            const height = Math.max(maxY - minY + 100, 300);
+            const midX = (minX + maxX) / 2 || 0;
+            const midY = (minY + maxY) / 2 || 0;
+            const vbW = width * zoomFactor; const vbH = height * zoomFactor;
+            svg.setAttribute('viewBox', `${midX - vbW/2} ${midY - vbH/2} ${vbW} ${vbH}`);
+
+            // 同步右侧面板
+            document.getElementById('cur-s').innerText = step.s;
+            document.getElementById('target-diff').innerText = step.diff;
+            document.getElementById('ans-count').innerText = step.ansSnapshot;
+            renderMap(step.prefixMap, step.diff);
+        }
+
+        function renderMap(map, highlightVal) {
+            const container = document.getElementById('map-container');
+            container.innerHTML = '';
+            Object.entries(map).forEach(([val, count]) => {
+                const div = document.createElement('div');
+                div.className = `prefix-item ${parseInt(val) === highlightVal ? 'highlight' : ''}`;
+                div.innerHTML = `<span>金额 ${val}</span> <span>${count} 次</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function nextStep() {
+            if (currentStep >= steps.length) return;
+            const step = steps[currentStep];
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'ENTER') {
+                status.innerHTML = `来到节点 <span class="purple highlight-text">${step.node.val}</span>，累计和 <span class="purple highlight-text">${step.s}</span>。`;
+                if (step.foundCount > 0) {
+                    status.innerHTML = `✨ <b>发现 ${step.foundCount} 条新路径！</b>`;
+                    subStatus.innerHTML = `当前和 ${step.s} 减去目标 8 等于 <span class="rose highlight-text">${step.diff}</span>。<br>账本里记录过 ${step.foundCount} 次这个数字，说明有 ${step.foundCount} 段路径达标！`;
+                } else {
+                    subStatus.innerHTML = `寻找差值 <span class="rose highlight-text">${step.diff}</span>... 账本里没见过，继续往下找。`;
+                }
+            } else {
+                status.innerHTML = `离开节点 <span class="rose highlight-text">${step.node.val}</span>，准备回溯。`;
+                subStatus.innerHTML = `把当前和 <span class="purple highlight-text">${step.s}</span> 从账本中擦除，不影响别的分叉路。`;
+            }
+
+            render();
+            currentStep++;
+            if (currentStep >= steps.length) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerHTML = `🏁 <b>全树探索完成！</b>`;
+                subStatus.innerText = `最终找到 ${steps[steps.length-1].ansSnapshot} 条符合条件的路径。`;
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; zoomFactor = Math.max(0.2, Math.min(5, zoomFactor)); render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; tempAns = 0; tempMap = {0:1}; currentFullPath = []; init(); }
+
+        function init() {
+            nodes = []; links = []; steps = [];
+            flatten(treeData, 0, 0, 150);
+            generateSteps(treeData, 0);
+            render();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

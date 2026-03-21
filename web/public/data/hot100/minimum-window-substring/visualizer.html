@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --primary-amber: #fbbf24;
+            --window-color: rgba(167, 139, 250, 0.15);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 850px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.9rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .string-row { 
+            position: relative; display: flex; gap: 4px; justify-content: center; 
+            margin-top: 50px; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 16px;
+        }
+        .char-box { 
+            width: 32px; height: 38px; border: 1px solid #333; border-radius: 6px; 
+            display: flex; align-items: center; justify-content: center; font-size: 0.9rem; 
+            background: #111; transition: all 0.3s; position: relative; z-index: 10;
+        }
+        
+        #window-box {
+            position: absolute; height: 48px; top: 10px;
+            background: var(--window-color); border: 2px solid var(--primary-violet);
+            border-radius: 8px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5; box-shadow: 0 0 15px rgba(167, 139, 250, 0.2);
+        }
+
+        .counters { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 650px; }
+        .counter-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 20px; }
+        .counter-title { font-size: 0.6rem; font-weight: 900; color: #71717a; text-transform: uppercase; margin-bottom: 10px; text-align: center; }
+        
+        .badge-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+        .badge { 
+            padding: 4px 10px; border-radius: 8px; border: 1px solid #27272a; 
+            font-size: 0.75rem; display: flex; gap: 6px; align-items: center; transition: all 0.3s;
+        }
+        .badge.needed { border-color: var(--primary-amber); color: var(--primary-amber); background: rgba(251, 191, 36, 0.05); }
+        .badge.satisfied { border-color: var(--primary-emerald); color: var(--primary-emerald); background: rgba(16, 185, 129, 0.1); }
+        .badge-count { font-weight: 900; font-mono; }
+
+        .ans-area { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .best-label { font-size: 0.65rem; color: #71717a; font-weight: bold; }
+        .best-val { font-size: 1.2rem; font-weight: 900; color: var(--primary-emerald); font-mono; letter-spacing: 0.1em; }
+
+        .controls { display: flex; gap: 16px; margin-top: 10px; }
+        button { padding: 10px 32px; border-radius: 14px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！目标：在 S 中集齐 T 的所有字母家族。</div>
+        </div>
+
+        <div class="string-row" id="s-row">
+            <div id="window-box"></div>
+            <!-- Chars -->
+        </div>
+
+        <div class="ans-area">
+            <div class="best-label">🏆 目前最短覆盖子串:</div>
+            <div id="best-str" class="best-val">---</div>
+        </div>
+
+        <div class="counters">
+            <div class="counter-card">
+                <div class="counter-title">目标清单 (T: ABC)</div>
+                <div class="badge-list" id="t-list"></div>
+            </div>
+            <div class="counter-card">
+                <div class="counter-title">窗口口袋 (Window)</div>
+                <div class="badge-list" id="s-list"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const s = "ADOBECODEBANC";
+        const t = "ABC";
+        const tCount = {};
+        for(let c of t) tCount[c] = (tCount[c] || 0) + 1;
+
+        let left = 0;
+        let right = 0;
+        const sCount = {};
+        let minLen = Infinity;
+        let bestRange = [-1, -1];
+        let mode = 'expand'; // 'expand' or 'shrink'
+
+        function init() {
+            const row = document.getElementById('s-row');
+            row.innerHTML = '<div id="window-box"></div>';
+            s.split('').forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'char-box';
+                div.id = `char-${i}`;
+                div.innerText = c;
+                row.appendChild(div);
+            });
+            renderCounters();
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function renderCounters() {
+            const tDiv = document.getElementById('t-list');
+            tDiv.innerHTML = Object.entries(tCount).map(([c, count]) => `
+                <div class="badge needed"><span>${c}</span><span class="badge-count">${count}</span></div>
+            `).join('');
+            
+            const sDiv = document.getElementById('s-list');
+            sDiv.innerHTML = Object.entries(tCount).map(([c, count]) => `
+                <div class="badge" id="s-badge-${c}"><span>${c}</span><span class="badge-count" id="s-val-${c}">0</span></div>
+            `).join('');
+        }
+
+        function updateUI() {
+            const row = document.getElementById('s-row');
+            const boxWidth = 32 + 4;
+            const startOffset = row.offsetWidth / 2 - (s.length * boxWidth - 4) / 2;
+
+            const windowBox = document.getElementById('window-box');
+            windowBox.style.left = `${startOffset + left * boxWidth - 4}px`;
+            windowBox.style.width = `${(right - left) * boxWidth + 4}px`;
+
+            // Update Window Counters
+            Object.entries(tCount).forEach(([c, needed]) => {
+                const val = sCount[c] || 0;
+                const badge = document.getElementById(`s-badge-${c}`);
+                const valSpan = document.getElementById(`s-val-${c}`);
+                valSpan.innerText = val;
+                if (val >= needed) badge.className = 'badge satisfied';
+                else badge.className = 'badge';
+            });
+
+            if (bestRange[0] !== -1) {
+                document.getElementById('best-str').innerText = s.substring(bestRange[0], bestRange[1] + 1);
+            }
+        }
+
+        function isCovered() {
+            for(let c in tCount) {
+                if ((sCount[c] || 0) < tCount[c]) return false;
+            }
+            return true;
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            
+            if (mode === 'expand') {
+                if (right >= s.length) {
+                    status.innerHTML = "🎉 所有的字母都看完了！任务完成。";
+                    document.getElementById('next-btn').disabled = true;
+                    return;
+                }
+
+                const char = s[right];
+                sCount[char] = (sCount[char] || 0) + 1;
+                status.innerHTML = `右指针右移，捡起字母 <span class="highlight">${char}</span>。`;
+                right++;
+
+                if (isCovered()) {
+                    mode = 'shrink';
+                    status.innerHTML += "<br><span style='color:var(--primary-emerald)'>找齐了！清单已覆盖。现在尝试缩短左边...</span>";
+                }
+            } else {
+                // Shrink mode
+                const len = right - left;
+                if (len < minLen) {
+                    minLen = len;
+                    bestRange = [left, right - 1];
+                }
+
+                const charOut = s[left];
+                status.innerHTML = `当前长度 ${len}。尝试缩短：扔掉左边的 <span class="highlight" style="color:var(--primary-rose)">${charOut}</span>。`;
+                sCount[charOut]--;
+                left++;
+
+                if (!isCovered()) {
+                    mode = 'expand';
+                    status.innerHTML += "<br><span style='color:var(--primary-rose)'>哎呀，不够盖满清单了。继续向右找字母。</span>";
+                } else {
+                    status.innerHTML += "<br><span style='color:var(--primary-emerald)'>依然覆盖清单！继续缩短...</span>";
+                }
+            }
+
+            updateUI();
+        }
+
+        function reset() {
+            left = 0; right = 0;
+            for(let k in sCount) delete sCount[k];
+            minLen = Infinity; bestRange = [-1, -1]; mode = 'expand';
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            document.getElementById('best-str').innerText = "---";
+            init();
+        }
+
+        init();
+        window.onresize = updateUI;
+    </script>
+</body>
+</html>

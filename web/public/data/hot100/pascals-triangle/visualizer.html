@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .pyramid-container {
+            width: 100%; min-height: 400px; background: var(--box-bg); border: 2px solid #475569;
+            border-radius: 20px; position: relative; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+        }
+
+        .row { display: flex; gap: 10px; justify-content: center; }
+
+        .brick {
+            width: 50px; height: 50px; background: #334155; border: 2px solid #475569;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.1rem; transition: all 0.4s;
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+
+        .brick.active { border-color: var(--amber); background: rgba(245, 158, 11, 0.1); transform: scale(1.1); }
+        .brick.parent { border-color: var(--purple); box-shadow: 0 0 10px var(--purple); }
+        .brick.side { border-color: var(--emerald); }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">准备搭建杨辉三角金字塔！</div>
+        
+        <div class="pyramid-container" id="pyramid"></div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextRow()" id="next-btn">搭建下一层</button>
+        </div>
+    </div>
+
+    <script>
+        const maxRows = 6;
+        let currentRow = 0;
+        let pyramidData = [];
+
+        function nextRow() {
+            if (currentRow >= maxRows) return;
+            const container = document.getElementById('pyramid');
+            const status = document.getElementById('status');
+            
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'row';
+            rowDiv.id = `row-${currentRow}`;
+            
+            const rowData = [];
+            for (let j = 0; j <= currentRow; j++) {
+                let val = 1;
+                if (j > 0 && j < currentRow) {
+                    val = pyramidData[currentRow - 1][j - 1] + pyramidData[currentRow - 1][j];
+                }
+                rowData.push(val);
+                
+                const brick = document.createElement('div');
+                brick.className = 'brick';
+                brick.id = `brick-${currentRow}-${j}`;
+                brick.innerText = val;
+                
+                if (j === 0 || j === currentRow) brick.classList.add('side');
+                rowDiv.appendChild(brick);
+            }
+            pyramidData.push(rowData);
+            container.appendChild(rowDiv);
+            
+            if (currentRow === 0) {
+                status.innerText = "第一层：只有大王 1 自己。";
+            } else if (currentRow === 1) {
+                status.innerText = "第二层：两边依然是 1 守卫。";
+            } else {
+                status.innerText = `第 ${currentRow+1} 层：中间数字等于上一层对应两个数之和。`;
+            }
+
+            currentRow++;
+            if (currentRow === maxRows) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerText = "金字塔搭建完成！";
+            }
+        }
+
+        function reset() {
+            currentRow = 0; pyramidData = [];
+            document.getElementById('pyramid').innerHTML = '';
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "准备搭建杨辉三角金字塔！";
+        }
+
+        // Start with first row
+    </script>
+</body>
+</html>

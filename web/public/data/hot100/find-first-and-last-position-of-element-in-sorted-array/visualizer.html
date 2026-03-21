@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>34. 在排序数组中查找元素的第一个和最后一个位置 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative; height: 350px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        .array-row {
+            display: flex; gap: 8px; position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .cell {
+            width: 50px; height: 50px; border-radius: 10px;
+            background-color: var(--node-bg); border: 2px solid #30363d;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.1em; transition: all 0.4s;
+        }
+
+        .cell.active { border-color: var(--amber); transform: scale(1.1); box-shadow: 0 0 15px var(--amber); color: var(--amber); }
+        .cell.matched { border-color: var(--emerald-green); background: rgba(6, 214, 160, 0.1); }
+        .cell.discarded { opacity: 0.2; transform: scale(0.9); }
+        .cell.final-bound { border-color: var(--rose-red); color: var(--rose-red); box-shadow: 0 0 15px var(--rose-red); }
+
+        .pointer {
+            position: absolute; width: 50px; height: 25px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7em; font-weight: bold; text-transform: uppercase;
+            border-radius: 4px; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+        }
+
+        #ptr-left { background: var(--primary-purple); color: white; top: -35px; }
+        #ptr-right { background: var(--rose-red); color: white; top: -35px; }
+        #ptr-mid { background: var(--amber); color: black; bottom: -35px; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+        .mode-badge { position: absolute; top: 20px; left: 20px; font-size: 0.9em; font-weight: bold; color: var(--primary-purple); background: rgba(157, 78, 221, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid var(--primary-purple); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📏 查找范围：第一个和最后一个</h1>
+        <div class="status-box">
+            <div id="status">准备开始。数组: <span class="highlight-text">[5, 7, 7, 8, 8, 10]</span>, 目标: <span class="highlight-text">8</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始寻找<b>第一个</b>出现的位置。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="mode-badge" id="mode-display">寻找模式: 第一个</div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+
+            <div id="ptr-left" class="pointer">Left</div>
+            <div id="ptr-right" class="pointer">Right</div>
+            <div id="ptr-mid" class="pointer" style="opacity:0">Mid</div>
+
+            <div class="array-row" id="array-container"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [5, 7, 7, 8, 8, 10];
+        const target = 8;
+        
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function generateSteps() {
+            steps = [];
+            
+            function find(isFirst) {
+                let left = 0, right = nums.length - 1;
+                let res = -1;
+                let mode = isFirst ? "寻找第一个" : "寻找最后一个";
+                
+                while (left <= right) {
+                    let mid = Math.floor((left + right) / 2);
+                    steps.push({ type: 'MID', left, right, mid, res, isFirst, mode });
+                    
+                    if (nums[mid] < target) {
+                        left = mid + 1;
+                        steps.push({ type: 'ADJUST', left, right, mid: -1, res, isFirst, mode, reason: `${nums[mid]} < ${target}，往右看` });
+                    } else if (nums[mid] > target) {
+                        right = mid - 1;
+                        steps.push({ type: 'ADJUST', left, right, mid: -1, res, isFirst, mode, reason: `${nums[mid]} > ${target}，往左看` });
+                    } else {
+                        res = mid;
+                        if (isFirst) {
+                            right = mid - 1;
+                            steps.push({ type: 'FOUND_TMP', left, right, mid: -1, res, isFirst, mode, reason: `找到 ${target}！继续往左挤压找第一个` });
+                        } else {
+                            left = mid + 1;
+                            steps.push({ type: 'FOUND_TMP', left, right, mid: -1, res, isFirst, mode, reason: `找到 ${target}！继续往右挤压找最后一个` });
+                        }
+                    }
+                }
+                steps.push({ type: 'DONE_ONE', left, right, mid: -1, res, isFirst, mode });
+                return res;
+            }
+
+            const first = find(true);
+            const last = find(false);
+            steps.push({ type: 'FINAL', first, last, mode: '全部完成' });
+        }
+
+        function init() {
+            const container = document.getElementById('array-container');
+            container.innerHTML = '';
+            nums.forEach((n, i) => {
+                const div = document.createElement('div');
+                div.className = 'cell';
+                div.id = `cell-${i}`;
+                div.innerText = n;
+                container.appendChild(div);
+            });
+
+            currentStep = 0;
+            generateSteps();
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI() {
+            const container = document.getElementById('array-container');
+            container.style.transform = `scale(${zoomFactor})`;
+
+            const step = steps[currentStep];
+            if (!step) return;
+
+            const lPtr = document.getElementById('ptr-left');
+            const rPtr = document.getElementById('ptr-right');
+            const mPtr = document.getElementById('ptr-mid');
+
+            const getPos = (idx) => {
+                if (idx < 0 || idx >= nums.length) return -1000;
+                const cell = document.getElementById(`cell-${idx}`);
+                const rect = cell.getBoundingClientRect();
+                const containerRect = document.getElementById('viz').getBoundingClientRect();
+                return rect.left - containerRect.left + rect.width / 2 - 25;
+            };
+
+            if (step.type === 'FINAL') {
+                lPtr.style.opacity = 0; rPtr.style.opacity = 0; mPtr.style.opacity = 0;
+            } else {
+                lPtr.style.opacity = 1; rPtr.style.opacity = 1;
+                lPtr.style.left = `${getPos(step.left)}px`;
+                rPtr.style.left = `${getPos(step.right)}px`;
+                
+                if (step.mid !== -1) {
+                    mPtr.style.opacity = 1;
+                    mPtr.style.left = `${getPos(step.mid)}px`;
+                } else {
+                    mPtr.style.opacity = 0;
+                }
+            }
+
+            // Cell styling
+            for (let i = 0; i < nums.length; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                cell.className = 'cell';
+                if (step.type !== 'FINAL') {
+                    if (i < step.left || i > step.right) cell.classList.add('discarded');
+                    if (i === step.mid) cell.classList.add('active');
+                    if (i === step.res && step.res !== -1) cell.classList.add('matched');
+                } else {
+                    if (i === step.first || i === step.last) cell.classList.add('final-bound');
+                    else if (i > step.first && i < step.last) cell.classList.add('matched');
+                    else cell.classList.add('discarded');
+                }
+            }
+
+            document.getElementById('mode-display').innerText = `模式: ${step.mode}`;
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                const step = steps[currentStep];
+                const status = document.getElementById('status');
+                const subStatus = document.getElementById('sub-status');
+
+                if (step.type === 'MID') {
+                    status.innerHTML = `计算中间位置: <span class="highlight-text">mid = ${step.mid}</span>`;
+                    subStatus.innerText = `当前区间 [${step.left}, ${step.right}]`;
+                } else if (step.type === 'ADJUST' || step.type === 'FOUND_TMP') {
+                    status.innerHTML = step.reason;
+                    subStatus.innerText = `目前记录到的边界索引为: ${step.res}`;
+                } else if (step.type === 'DONE_ONE') {
+                    status.innerHTML = `✅ <b>${step.mode}完成！</b>`;
+                    subStatus.innerText = `找到的边界索引为: ${step.res}`;
+                } else if (step.type === 'FINAL') {
+                    status.innerHTML = `🎉 <b>全部分局定位成功！</b>`;
+                    subStatus.innerHTML = `结果范围: <span class="highlight-text">[${step.first}, ${step.last}]</span>`;
+                    document.getElementById('next-btn').disabled = true;
+                }
+                updateUI();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; updateUI(); }
+        function resetZoom() { zoomFactor = 1.0; updateUI(); }
+        function reset() { init(); }
+
+        window.onload = init;
+        window.onresize = updateUI;
+    </script>
+</body>
+</html>

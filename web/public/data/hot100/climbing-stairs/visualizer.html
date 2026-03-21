@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 800px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .stairs-container {
+            width: 100%; height: 400px; background: var(--box-bg); border: 2px solid #475569;
+            border-radius: 20px; position: relative; padding: 40px; display: flex; align-items: flex-end; justify-content: center;
+        }
+
+        .stair {
+            width: 60px; background: #334155; border: 2px solid #475569; border-radius: 8px 8px 0 0;
+            position: relative; transition: all 0.5s; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .stair.active { border-color: var(--amber); background: rgba(245, 158, 11, 0.1); }
+        .stair.from-1 { border-color: var(--purple); box-shadow: 0 0 15px var(--purple); }
+        .stair.from-2 { border-color: var(--rose); box-shadow: 0 0 15px var(--rose); }
+        .stair .val { font-weight: bold; font-size: 1.1rem; margin-top: -30px; }
+        .stair .idx { position: absolute; bottom: -25px; font-size: 0.7rem; color: #64748b; }
+
+        .mario {
+            position: absolute; font-size: 2rem; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">马里奥准备爬 5 级台阶！</div>
+        
+        <div class="stairs-container" id="stair-area">
+            <div id="mario" class="mario">🏃</div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">爬一级</button>
+        </div>
+    </div>
+
+    <script>
+        const n = 5;
+        let step = 0;
+        let dp = [1, 1];
+
+        function init() {
+            const area = document.getElementById('stair-area');
+            area.querySelectorAll('.stair').forEach(s => s.remove());
+            for(let i=0; i<=n; i++) {
+                const s = document.createElement('div');
+                s.className = 'stair';
+                s.id = `stair-${i}`;
+                s.style.height = `${(i+1) * 40}px`;
+                s.innerHTML = `<span class="val" id="val-${i}">${i <= 1 ? dp[i] : '?'}</span><span class="idx">${i}阶</span>`;
+                area.appendChild(s);
+            }
+            updateMario(0);
+        }
+
+        function updateMario(idx) {
+            const mario = document.getElementById('mario');
+            const stair = document.getElementById(`stair-${idx}`);
+            const rect = stair.getBoundingClientRect();
+            const areaRect = document.getElementById('stair-area').getBoundingClientRect();
+            mario.style.left = `${stair.offsetLeft + 10}px`;
+            mario.style.bottom = `${(idx+1) * 40 + 10}px`;
+        }
+
+        function nextStep() {
+            if (step >= n) return;
+            step++;
+            const status = document.getElementById('status');
+            
+            // Highlight source stairs
+            document.querySelectorAll('.stair').forEach(s => s.classList.remove('from-1', 'from-2', 'active'));
+            
+            if (step >= 2) {
+                const val = dp[step-1] + dp[step-2];
+                dp[step] = val;
+                document.getElementById(`val-${step}`).innerText = val;
+                document.getElementById(`stair-${step-1}`).classList.add('from-1');
+                document.getElementById(`stair-${step-2}`).classList.add('from-2');
+                status.innerText = `第 ${step} 阶的方法 = 第 ${step-1} 阶 (${dp[step-1]}) + 第 ${step-2} 阶 (${dp[step-2]}) = ${val}`;
+            } else {
+                status.innerText = `第 ${step} 阶的方法是预设好的基础：${dp[step]}`;
+            }
+
+            document.getElementById(`stair-${step}`).classList.add('active');
+            updateMario(step);
+
+            if (step === n) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerText = `到达终点！总方法数：${dp[n]}`;
+            }
+        }
+
+        function reset() {
+            step = 0; dp = [1, 1];
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "马里奥准备爬 5 级台阶！";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

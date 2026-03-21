@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .coins-row { display: flex; gap: 15px; margin-bottom: 10px; }
+        .coin-btn {
+            width: 50px; height: 50px; border-radius: 50%; background: var(--amber); color: var(--bg);
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;
+            border: 3px solid transparent; transition: all 0.3s;
+        }
+        .coin-btn.active { border-color: #fff; transform: scale(1.2); box-shadow: 0 0 15px var(--amber); }
+
+        .dp-grid {
+            display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+            background: var(--box-bg); padding: 20px; border-radius: 15px; border: 2px solid #475569;
+        }
+        .dp-cell {
+            width: 45px; height: 45px; background: #334155; border: 1px solid #475569; border-radius: 6px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; transition: all 0.3s;
+        }
+        .dp-cell.current { border-color: var(--amber); transform: scale(1.1); z-index: 5; }
+        .dp-cell.source { border-color: var(--purple); background: rgba(139, 92, 246, 0.2); }
+        .dp-cell .val { font-weight: bold; font-size: 0.9rem; }
+        .dp-cell .idx { position: absolute; bottom: -18px; font-size: 0.6rem; color: #64748b; }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">准备凑齐 11 元！现有硬币 [1, 2, 5]</div>
+        
+        <div class="coins-row" id="coin-row"></div>
+
+        <div class="dp-grid" id="dp-grid"></div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">试下一个硬币</button>
+        </div>
+    </div>
+
+    <script>
+        const amount = 11;
+        const coins = [1, 2, 5];
+        let coinIdx = 0;
+        let currentAmount = 0;
+        let dp = Array(amount + 1).fill('∞');
+        dp[0] = 0;
+
+        function init() {
+            const coinRow = document.getElementById('coin-row');
+            coinRow.innerHTML = '';
+            coins.forEach(c => {
+                const b = document.createElement('div');
+                b.className = 'coin-btn';
+                b.id = `coin-${c}`;
+                b.innerText = c;
+                coinRow.appendChild(b);
+            });
+
+            const grid = document.getElementById('dp-grid');
+            grid.innerHTML = '';
+            for(let i=0; i<=amount; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'dp-cell';
+                cell.id = `cell-${i}`;
+                cell.innerHTML = `<span class="val" id="val-${i}">${dp[i]}</span><span class="idx">${i}</span>`;
+                grid.appendChild(cell);
+            }
+        }
+
+        async function nextStep() {
+            if (coinIdx >= coins.length) return;
+            const status = document.getElementById('status');
+            const coin = coins[coinIdx];
+            
+            document.querySelectorAll('.coin-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`coin-${coin}`).classList.add('active');
+
+            status.innerText = `当前使用 ${coin} 元硬币更新日记本...`;
+            const btn = document.getElementById('next-btn');
+            btn.disabled = true;
+
+            for (let c = coin; c <= amount; c++) {
+                document.querySelectorAll('.dp-cell').forEach(cell => cell.classList.remove('current', 'source'));
+                const curCell = document.getElementById(`cell-${c}`);
+                const srcCell = document.getElementById(`cell-${c - coin}`);
+                
+                curCell.classList.add('current');
+                srcCell.classList.add('source');
+
+                const newVal = Number(dp[c - coin]) + 1;
+                const oldVal = dp[c] === '∞' ? Infinity : Number(dp[c]);
+
+                if (newVal < oldVal) {
+                    dp[c] = newVal;
+                    document.getElementById(`val-${c}`).innerText = newVal;
+                    curCell.style.borderColor = 'var(--emerald)';
+                }
+                
+                await new Promise(r => setTimeout(r, 150));
+            }
+
+            coinIdx++;
+            if (coinIdx < coins.length) {
+                status.innerText = `${coin} 元硬币更新完毕！按“下一步”尝试下一种硬币。`;
+                btn.disabled = false;
+            } else {
+                status.innerText = `所有硬币尝试完毕！凑齐 ${amount} 元最少需要 ${dp[amount]} 枚硬币。`;
+                btn.disabled = true;
+            }
+        }
+
+        function reset() {
+            coinIdx = 0; dp = Array(amount + 1).fill('∞'); dp[0] = 0;
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = `准备凑齐 ${amount} 元！现有硬币 [${coins.join(', ')}]`;
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

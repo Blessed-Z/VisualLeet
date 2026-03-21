@@ -1,0 +1,17 @@
+{
+  "id": 21,
+  "title": "21. 合并两个有序链表",
+  "slug": "merge-two-sorted-lists",
+  "link": "https://leetcode.cn/problems/merge-two-sorted-lists/",
+  "difficulty": "Easy",
+  "description": "将两个升序链表合并为一个新的 升序 链表并返回。新链表是通过拼接给定的两个链表的所有节点组成的。",
+  "solutions": [
+    {
+      "name": "迭代 + 虚拟头节点 (最优)",
+      "file": "dummy-node.py",
+      "time": "O(N + M)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

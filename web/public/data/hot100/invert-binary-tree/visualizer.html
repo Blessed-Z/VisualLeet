@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻转二叉树可视化</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        #container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 900px;
+            align-items: center;
+        }
+        #viz-area {
+            width: 100%;
+            height: 500px;
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #30363d;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(13, 17, 23, 0.8);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            z-index: 100;
+        }
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            padding: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: #161b22 !important;
+            color: #10b981 !important;
+            border: 1px solid #30363d !important;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .zoom-btn:hover {
+            background: #30363d !important;
+            color: #a855f7 !important;
+            border-color: #a855f7 !important;
+        }
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+        }
+        .node circle {
+            fill: #1e293b;
+            stroke: #475569;
+            stroke-width: 2px;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .node text {
+            fill: #e2e8f0;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        .node.swapping circle {
+            stroke: #f43f5e;
+            stroke-width: 4px;
+            fill: #4c0519;
+        }
+        .node.done circle {
+            fill: #064e3b;
+            stroke: #10b981;
+        }
+        .link {
+            stroke: #475569;
+            stroke-width: 2px;
+            fill: none;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        button {
+            background-color: #f43f5e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        button:hover { background-color: #e11d48; transform: translateY(-2px); }
+        button:disabled { background-color: #30363d; color: #8b949e; cursor: not-allowed; transform: none; }
+        
+        #status-text {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            color: #f59e0b;
+            font-weight: 500;
+            text-align: center;
+        }
+        h3 { color: #f43f5e; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h3>照镜子：翻转这棵小树</h3>
+        <div id="status-text">点击“开始照镜子”</div>
+        <div id="viz-area">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(0.1)" title="放大">+</button>
+                <button class="zoom-btn" onclick="changeZoom(-0.1)" title="缩小">-</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="重置">⟲</button>
+            </div>
+            <svg id="tree-svg"></svg>
+        </div>
+        <div id="controls">
+            <button id="reset-btn">还原</button>
+            <button id="next-btn">开始照镜子</button>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            id: 1, val: 4,
+            left: {
+                id: 2, val: 2,
+                left: { id: 4, val: 1, left: null, right: null },
+                right: { id: 5, val: 3, left: null, right: null }
+            },
+            right: {
+                id: 3, val: 7,
+                left: { id: 6, val: 6, left: null, right: null },
+                right: { id: 7, val: 9, left: null, right: null }
+            }
+        };
+
+        let nodes = [];
+        let links = [];
+        let queue = [];
+        let finished = false;
+
+        function getLayout(node, x, y, dx) {
+            if (!node) return;
+            node.x = x;
+            node.y = y;
+            nodes.push(node);
+            if (node.left) {
+                links.push({ source: node, target: node.left, type: 'left' });
+                getLayout(node.left, x - dx, y + 80, dx / 2);
+            }
+            if (node.right) {
+                links.push({ source: node, target: node.right, type: 'right' });
+                getLayout(node.right, x + dx, y + 80, dx / 2);
+            }
+        }
+
+        const svg = document.getElementById('tree-svg');
+        const statusText = document.getElementById('status-text');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        let zoomFactor = 1.0;
+
+        function changeZoom(delta) {
+            zoomFactor = Math.max(0.2, Math.min(5.0, zoomFactor + delta));
+            render();
+        }
+
+        function resetZoom() {
+            zoomFactor = 1.0;
+            render();
+        }
+
+        function init() {
+            nodes = [];
+            links = [];
+            queue = [treeData];
+            finished = false;
+            getLayout(treeData, 400, 60, 160);
+            statusText.innerText = "准备开始：从根节点开始翻转";
+            nextBtn.innerText = "开始照镜子";
+            nextBtn.disabled = false;
+            render();
+        }
+
+        function render() {
+            svg.innerHTML = '';
+
+            if (nodes.length > 0) {
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                nodes.forEach(n => {
+                    minX = Math.min(minX, n.x);
+                    maxX = Math.max(maxX, n.x);
+                    minY = Math.min(minY, n.y);
+                    maxY = Math.max(maxY, n.y);
+                });
+                
+                const padding = 40;
+                const zoomW = (maxX - minX + padding * 2) / zoomFactor;
+                const zoomH = (maxY - minY + padding * 2) / zoomFactor;
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                svg.setAttribute('viewBox', `${centerX - zoomW / 2} ${centerY - zoomH / 2} ${zoomW} ${zoomH}`);
+            }
+
+            // Links
+            links.forEach(l => {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                path.setAttribute('x1', l.source.x);
+                path.setAttribute('y1', l.source.y);
+                path.setAttribute('x2', l.target.x);
+                path.setAttribute('y2', l.target.y);
+                path.setAttribute('class', 'link');
+                svg.appendChild(path);
+            });
+            // Nodes
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let className = 'node';
+                if (n === currentSwapping) className += ' swapping';
+                g.setAttribute('class', className);
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', n.x);
+                circle.setAttribute('cy', n.y);
+                circle.setAttribute('r', 22);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', n.x);
+                text.setAttribute('y', n.y);
+                text.textContent = n.val;
+                
+                g.appendChild(circle);
+                g.appendChild(text);
+                svg.appendChild(g);
+            });
+        }
+
+        let currentSwapping = null;
+
+        nextBtn.onclick = () => {
+            if (queue.length === 0) {
+                statusText.innerText = "大功告成！整棵树都已经照完镜子啦！";
+                nextBtn.disabled = true;
+                currentSwapping = null;
+                render();
+                return;
+            }
+
+            nextBtn.innerText = "下一步";
+            const node = queue.shift();
+            currentSwapping = node;
+            statusText.innerText = `交换节点 ${node.val} 的左右两只手`;
+            
+            // Swap in data
+            const temp = node.left;
+            node.left = node.right;
+            node.right = temp;
+
+            // Update layout positions recursively for animation
+            updatePositions(treeData, 400, 60, 160);
+
+            if (node.left) queue.push(node.left);
+            if (node.right) queue.push(node.right);
+
+            render();
+        };
+
+        function updatePositions(node, x, y, dx) {
+            if (!node) return;
+            node.x = x;
+            node.y = y;
+            if (node.left) updatePositions(node.left, x - dx, y + 80, dx / 2);
+            if (node.right) updatePositions(node.right, x + dx, y + 80, dx / 2);
+        }
+
+        resetBtn.onclick = () => location.reload();
+
+        init();
+    </script>
+</body>
+</html>

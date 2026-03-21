@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>131. 分割回文串 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+
+        .viz-panel {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 25px; position: relative; min-height: 450px; display: flex; flex-direction: column; align-items: center;
+        }
+
+        .string-display {
+            display: flex; gap: 5px; margin-bottom: 30px; font-size: 1.5em; font-family: monospace;
+        }
+        .char-box {
+            width: 40px; height: 50px; border: 2px solid #30363d; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.3s;
+        }
+        .char-box.active { border-color: var(--amber); background: rgba(255, 190, 11, 0.1); }
+        .char-box.current-segment { border-color: var(--primary-purple); background: rgba(157, 78, 221, 0.1); }
+
+        .path-display {
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+            padding: 15px; border: 2px dashed #30363d; border-radius: 15px; width: 100%;
+        }
+        .path-segment {
+            padding: 5px 15px; background: rgba(157, 78, 221, 0.2); border: 1px solid var(--primary-purple);
+            border-radius: 20px; font-weight: bold; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .res-grid {
+            display: grid; grid-template-columns: 1fr; gap: 10px; width: 100%;
+        }
+        .res-item {
+            padding: 10px; background: rgba(6, 214, 160, 0.1); border: 1px solid rgba(6, 214, 160, 0.3);
+            border-radius: 10px; font-family: monospace; font-size: 0.9em;
+        }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+        .rose { color: var(--rose-red); }
+        .emerald { color: var(--emerald-green); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✂️ 分割回文串：回文切切切</h1>
+        <div class="status-box">
+            <div id="status">准备开始分割。字符串: <span class="highlight-text">"aab"</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">我们将尝试每一刀切下去是否产生回文。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="viz-panel">
+                <div style="font-size: 0.8em; color: #8b949e; margin-bottom: 15px; text-transform: uppercase;">正在切分的字符串</div>
+                <div class="string-display" id="string-container"></div>
+                
+                <div style="font-size: 0.8em; color: #8b949e; margin-bottom: 10px; margin-top: 30px; text-transform: uppercase;">当前切好的餐盘 (path)</div>
+                <div class="path-display" id="path-container"></div>
+            </div>
+
+            <div class="viz-panel">
+                <div style="font-size: 0.8em; color: #8b949e; margin-bottom: 15px; text-transform: uppercase;">收集箱 (ans)</div>
+                <div class="res-grid" id="res-container"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const s = "aab";
+        let steps = [];
+        let currentStep = 0;
+
+        function solve() {
+            const ans = [];
+            const path = [];
+            function backtrack(i) {
+                if (i === s.length) {
+                    ans.push([...path]);
+                    steps.push({ type: 'FOUND', path: [...path], ans: [...ans.map(a => [...a])], i, j: -1, isPalindrome: true });
+                    return;
+                }
+                for (let j = i; j < s.length; j++) {
+                    const sub = s.substring(i, j + 1);
+                    const isPal = sub === sub.split('').reverse().join('');
+                    
+                    steps.push({ type: 'TRY', path: [...path], ans: [...ans.map(a => [...a])], i, j, sub, isPalindrome: isPal });
+                    
+                    if (isPal) {
+                        path.push(sub);
+                        backtrack(j + 1);
+                        path.pop();
+                        steps.push({ type: 'BACK', path: [...path], ans: [...ans.map(a => [...a])], i, j });
+                    }
+                }
+            }
+            backtrack(0);
+        }
+
+        solve();
+
+        function render() {
+            const step = steps[currentStep];
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            // Render String
+            const strContainer = document.getElementById('string-container');
+            strContainer.innerHTML = '';
+            for(let k=0; k<s.length; k++) {
+                const div = document.createElement('div');
+                div.className = 'char-box';
+                if (k >= step.i && k <= step.j) div.className += ' active';
+                div.innerText = s[k];
+                strContainer.appendChild(div);
+            }
+
+            // Render Path
+            const pathContainer = document.getElementById('path-container');
+            pathContainer.innerHTML = '';
+            step.path.forEach(seg => {
+                const div = document.createElement('div');
+                div.className = 'path-segment';
+                div.innerText = seg;
+                pathContainer.appendChild(div);
+            });
+
+            // Render Results
+            const resContainer = document.getElementById('res-container');
+            resContainer.innerHTML = '';
+            step.ans.forEach(res => {
+                const div = document.createElement('div');
+                div.className = 'res-item';
+                div.innerText = JSON.stringify(res);
+                resContainer.appendChild(div);
+            });
+
+            if (step.type === 'TRY') {
+                status.innerHTML = `尝试切下一段：<span class="highlight-text">"${step.sub}"</span>`;
+                if (step.isPalindrome) {
+                    subStatus.innerHTML = `✅ <span class="emerald">是回文！</span> 放入餐盘，继续往后切。`;
+                } else {
+                    subStatus.innerHTML = `❌ <span class="rose">不是回文。</span> 这一刀切坏了，得换个位置。`;
+                }
+            } else if (step.type === 'BACK') {
+                status.innerHTML = `回溯：取出最后一段回文。`;
+                subStatus.innerText = `我们要试试在别的地方切一刀。`;
+            } else if (step.type === 'FOUND') {
+                status.innerHTML = `✨ <b>发现一种完整方案！</b>`;
+                subStatus.innerText = `整根香肠都切好了，存入收集箱。`;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            } else {
+                document.getElementById('next-btn').disabled = true;
+                document.getElementById('status').innerHTML = "🎉 <b>全部分割方案搜索完毕！</b>";
+            }
+        }
+
+        function reset() {
+            currentStep = 0;
+            document.getElementById('next-btn').disabled = false;
+            render();
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>

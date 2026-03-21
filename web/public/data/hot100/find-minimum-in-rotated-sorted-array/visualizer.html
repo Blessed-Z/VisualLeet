@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>153. 寻找旋转排序数组中的最小值 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--rose-red); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative; height: 400px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        .array-view { display: flex; align-items: flex-end; gap: 8px; position: relative; height: 200px; }
+        .cell-container { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .bar {
+            width: 40px; background: var(--primary-purple); border-radius: 4px 4px 0 0;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex; align-items: flex-start; justify-content: center; padding-top: 5px;
+            font-size: 0.8em; font-weight: bold; color: white;
+        }
+        .bar.active { background: var(--amber); box-shadow: 0 0 15px var(--amber); }
+        .bar.target-pivot { background: var(--emerald-green); box-shadow: 0 0 15px var(--emerald-green); }
+        .bar.discarded { opacity: 0.1; }
+        .bar.right-marker { border: 2px solid var(--rose-red); }
+
+        .pointer {
+            position: absolute; width: 40px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6em; font-weight: bold; text-transform: uppercase;
+            border-radius: 4px; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+        }
+        #ptr-left { background: var(--primary-purple); color: white; bottom: -30px; }
+        #ptr-right { background: var(--rose-red); color: white; bottom: -30px; }
+        #ptr-mid { background: var(--amber); color: black; bottom: -55px; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 40px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📉 寻找旋转排序数组中的最小值</h1>
+        <div class="status-box">
+            <div id="status">准备开始。旋转数组: <span class="highlight-text">[3, 4, 5, 1, 2]</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步观察二分查找如何锁定“跳变点”。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+
+            <div id="ptr-left" class="pointer">Left</div>
+            <div id="ptr-right" class="pointer">Right</div>
+            <div id="ptr-mid" class="pointer" style="opacity:0">Mid</div>
+
+            <div class="array-view" id="array-container"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [3, 4, 5, 1, 2];
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function generateSteps() {
+            steps = [];
+            let l = 0, r = nums.length - 1;
+            while (l < r) {
+                let m = Math.floor(l + (r - l) / 2);
+                steps.push({ type: 'MID', l, r, m, status: `计算中点 Mid = ${m}` });
+                
+                if (nums[m] > nums[r]) {
+                    l = m + 1;
+                    steps.push({ type: 'ADJUST', l, r, m: -1, status: `${nums[m]} > ${nums[r]}，说明最小值在右侧` });
+                } else {
+                    r = m;
+                    steps.push({ type: 'ADJUST', l, r, m: -1, status: `${nums[m]} <= ${nums[r]}，说明最小值在左侧或就是 Mid` });
+                }
+            }
+            steps.push({ type: 'FOUND', l, r, m: -1, status: `找到最小值: ${nums[l]}` });
+        }
+
+        function init() {
+            const container = document.getElementById('array-container');
+            container.innerHTML = '';
+            nums.forEach((n, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'cell-container';
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.id = `bar-${i}`;
+                bar.style.height = `${n * 30 + 20}px`;
+                bar.innerText = n;
+                wrapper.appendChild(bar);
+                container.appendChild(wrapper);
+            });
+            generateSteps();
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI() {
+            const step = steps[currentStep];
+            if (!step) return;
+
+            const container = document.getElementById('array-container');
+            container.style.transform = `scale(${zoomFactor})`;
+
+            const lPtr = document.getElementById('ptr-left');
+            const rPtr = document.getElementById('ptr-right');
+            const mPtr = document.getElementById('ptr-mid');
+
+            const getPos = (idx) => {
+                const bar = document.getElementById(`bar-${idx}`);
+                if (!bar) return -1000;
+                const rect = bar.getBoundingClientRect();
+                const containerRect = document.getElementById('viz').getBoundingClientRect();
+                return rect.left - containerRect.left + rect.width / 2 - 20;
+            };
+
+            lPtr.style.left = `${getPos(step.l)}px`;
+            rPtr.style.left = `${getPos(step.r)}px`;
+            if (step.m !== -1) {
+                mPtr.style.opacity = 1;
+                mPtr.style.left = `${getPos(step.m)}px`;
+            } else { mPtr.style.opacity = 0; }
+
+            for (let i = 0; i < nums.length; i++) {
+                const bar = document.getElementById(`bar-${i}`);
+                bar.className = 'bar';
+                if (i < step.l || i > step.r) bar.classList.add('discarded');
+                if (i === step.m) bar.classList.add('active');
+                if (i === step.r && step.type === 'MID') bar.classList.add('right-marker');
+                if (step.type === 'FOUND' && i === step.l) bar.classList.add('target-pivot');
+            }
+
+            document.getElementById('status').innerHTML = step.status;
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                updateUI();
+            } else {
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; updateUI(); }
+        function resetZoom() { zoomFactor = 1.0; updateUI(); }
+        function reset() { currentStep = 0; init(); }
+
+        window.onload = init;
+        window.onresize = updateUI;
+    </script>
+</body>
+</html>

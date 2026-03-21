@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #09090b; margin: 0; padding: 20px; color: #fff; overflow-x: hidden; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+        
+        .array-view { display: flex; gap: 12px; justify-content: center; margin-top: 40px; position: relative; }
+        .num-box { width: 50px; height: 50px; border: 2px solid #3f3f46; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: bold; background: #18181b; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+        .is-zero { color: #71717a; border-style: dashed; }
+        .non-zero { border-color: #10b981; color: #10b981; }
+        
+        .pointer { position: absolute; top: -35px; display: flex; flex-direction: column; align-items: center; transition: all 0.5s; width: 50px; }
+        .pointer-label { font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; text-transform: uppercase; }
+        .pointer-arrow { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid currentColor; }
+        
+        #fast-pointer { color: #a78bfa; }
+        #slow-pointer { color: #fbbf24; }
+
+        .status-card { background: #18181b; border: 1px solid #27272a; padding: 15px 25px; border-radius: 20px; width: 100%; max-width: 550px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; }
+        .status-text { font-size: 0.9rem; color: #a1a1aa; line-height: 1.6; }
+        .highlight { font-weight: bold; }
+
+        .controls { display: flex; gap: 12px; }
+        button { padding: 10px 28px; border-radius: 14px; border: 1px solid #27272a; background: #18181b; color: #e4e4e7; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; font-weight: 500; }
+        button:hover { background: #27272a; transform: translateY(-2px); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！黄色是慢指针(等待位置)，紫色是快指针(侦察兵)。</div>
+        </div>
+
+        <div class="array-view" id="array-container">
+            <!-- Pointers -->
+            <div id="slow-pointer" class="pointer">
+                <span class="pointer-label">Slow</span>
+                <div class="pointer-arrow"></div>
+            </div>
+            <div id="fast-pointer" class="pointer">
+                <span class="pointer-label">Fast</span>
+                <div class="pointer-arrow"></div>
+            </div>
+            <!-- Boxes will be injected here -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [0, 1, 0, 3, 12, 0, 8];
+        let i = 0; // fast
+        let j = 0; // slow
+        let isExchanging = false;
+
+        function init() {
+            const container = document.getElementById('array-container');
+            // Remove old boxes
+            const oldBoxes = container.querySelectorAll('.num-box');
+            oldBoxes.forEach(b => b.remove());
+
+            nums.forEach((n, idx) => {
+                const div = document.createElement('div');
+                div.className = `num-box ${n === 0 ? 'is-zero' : 'non-zero'}`;
+                div.id = `box-${idx}`;
+                div.innerText = n;
+                container.appendChild(div);
+            });
+            updatePointers();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updatePointers() {
+            const slowPtr = document.getElementById('slow-pointer');
+            const fastPtr = document.getElementById('fast-pointer');
+            
+            const boxWidth = 50 + 12; // width + gap
+            slowPtr.style.left = `${j * boxWidth}px`;
+            fastPtr.style.left = `${i * boxWidth}px`;
+        }
+
+        function nextStep() {
+            if (i >= nums.length) return;
+            const status = document.getElementById('status');
+            const num = nums[i];
+
+            if (num !== 0) {
+                status.innerHTML = `快指针发现 <span class="highlight" style="color:#10b981">${num}</span> (非零)！<br>把它和慢指针位置的 <span class="highlight">${nums[j]}</span> 交换。`;
+                
+                // Perform swap logic
+                [nums[i], nums[j]] = [nums[j], nums[i]];
+                
+                // Update UI visually
+                const boxI = document.getElementById(`box-${i}`);
+                const boxJ = document.getElementById(`box-${j}`);
+                
+                const tempText = boxI.innerText;
+                const tempClass = boxI.className;
+                
+                boxI.innerText = boxJ.innerText;
+                boxI.className = boxJ.className;
+                
+                boxJ.innerText = tempText;
+                boxJ.className = tempClass;
+
+                j++;
+            } else {
+                status.innerHTML = `快指针发现 <span class="highlight">0</span>。跳过它，继续往前找。`;
+            }
+
+            i++;
+            updatePointers();
+
+            if (i === nums.length) {
+                setTimeout(() => {
+                    status.innerHTML = "🎉 所有的非零数都移到前面了！零都在队尾。";
+                    document.getElementById('next-btn').disabled = true;
+                }, 500);
+            }
+        }
+
+        function reset() {
+            i = 0; j = 0;
+            nums.length = 0;
+            nums.push(0, 1, 0, 3, 12, 0, 8);
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

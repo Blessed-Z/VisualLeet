@@ -1,0 +1,18 @@
+{
+  "id": 543,
+  "title": "二叉树的直径",
+  "slug": "diameter-of-binary-tree",
+  "difficulty": "Easy",
+  "category": "二叉树",
+  "tags": ["Tree", "Depth-First Search", "Binary Tree"],
+  "description": "给定一棵二叉树，你需要计算它的直径长度。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "深度优先搜索",
+      "time": "O(n)",
+      "space": "O(n)"
+    }
+  ]
+}

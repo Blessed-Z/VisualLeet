@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>51. N 皇后 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--rose-red); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+
+        .viz-card {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 20px;
+            padding: 25px; position: relative; display: flex; flex-direction: column; align-items: center;
+        }
+
+        .chessboard {
+            display: grid; border: 4px solid #30363d; border-radius: 8px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .cell {
+            width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;
+            font-size: 2.5em; position: relative; transition: all 0.3s;
+        }
+        .cell.dark { background-color: #161b22; }
+        .cell.light { background-color: #21262d; }
+        
+        .cell.under-attack { background-color: rgba(239, 35, 60, 0.15) !important; }
+        .cell.scanning { background-color: rgba(255, 190, 11, 0.1) !important; border: 1px solid var(--amber); }
+
+        .queen {
+            animation: dropIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: default; user-select: none;
+        }
+        @keyframes dropIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .radar-line {
+            position: absolute; pointer-events: none; z-index: 5;
+            background: var(--rose-red); opacity: 0.3;
+        }
+
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
+        .panel-box {
+            background: var(--node-bg); border: 1px solid #30363d; border-radius: 15px; padding: 15px;
+        }
+        .panel-title { font-size: 0.8em; color: #8b949e; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; }
+
+        .res-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;
+        }
+        .res-preview {
+            width: 100%; aspect-ratio: 1; border: 1px solid #30363d; border-radius: 8px;
+            display: grid; overflow: hidden; transform: scale(0.9);
+        }
+        .p-cell { border: 0.1px solid #222; }
+        .p-cell.q { background: var(--emerald-green); }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👑 N 皇后：谁也不许打架！</h1>
+        <div class="status-box">
+            <div id="status">准备开始放置。目标皇后数: <span class="highlight-text">n = 4</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">每一行、列、斜线只能有一个皇后。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="viz-card">
+                <div class="panel-title">当前棋盘布局</div>
+                <div id="board" class="chessboard"></div>
+            </div>
+
+            <div class="side-panel">
+                <div class="panel-box">
+                    <div class="panel-title">雷达监测状态</div>
+                    <div style="font-size: 0.9em; line-height: 2;">
+                        垂直雷达 (col): <span id="stat-col" class="emerald">正常</span><br>
+                        右上对角线 (r+c): <span id="stat-d1" class="emerald">正常</span><br>
+                        左上对角线 (r-c): <span id="stat-d2" class="emerald">正常</span>
+                    </div>
+                </div>
+                <div class="panel-box" style="flex: 1; overflow-y: auto; max-height: 300px;">
+                    <div class="panel-title">已找到的解 (<span id="ans-count">0</span>)</div>
+                    <div id="res-grid" class="res-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const n = 4;
+        let steps = [];
+        let currentStep = 0;
+
+        function solve() {
+            const ans = [];
+            const queens = Array(n).fill(-1);
+            const col = Array(n).fill(false);
+            const d1 = Array(2*n-1).fill(false);
+            const d2 = Array(2*n-1).fill(false);
+
+            function backtrack(r) {
+                if (r === n) {
+                    ans.push([...queens]);
+                    steps.push({ type: 'SUCCESS', r, c: -1, queens: [...queens], ans: [...ans.map(a => [...a])] });
+                    return;
+                }
+
+                for (let c = 0; c < n; c++) {
+                    const isAttacked = col[c] || d1[r+c] || d2[r-c+n-1];
+                    steps.push({ type: 'TRY', r, c, isAttacked, queens: [...queens], ans: [...ans.map(a => [...a])] });
+
+                    if (!isAttacked) {
+                        queens[r] = c;
+                        col[c] = d1[r+c] = d2[r-c+n-1] = true;
+                        
+                        backtrack(r + 1);
+                        
+                        // Backtrack
+                        col[c] = d1[r+c] = d2[r-c+n-1] = false;
+                        queens[r] = -1;
+                        steps.push({ type: 'BACK', r, c, queens: [...queens], ans: [...ans.map(a => [...a])] });
+                    }
+                }
+            }
+            backtrack(0);
+        }
+
+        solve();
+
+        function render() {
+            const step = steps[currentStep];
+            const board = document.getElementById('board');
+            board.style.gridTemplateColumns = `repeat(${n}, 60px)`;
+            board.innerHTML = '';
+
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    const div = document.createElement('div');
+                    div.className = `cell ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
+                    
+                    // Highlight scanning
+                    if (step.type === 'TRY' && step.r === r && step.c === c) {
+                        div.className += ' scanning';
+                        if (step.isAttacked) div.className += ' under-attack';
+                    }
+
+                    // Place Queens
+                    if (step.queens[r] === c) {
+                        const q = document.createElement('div');
+                        q.className = 'queen';
+                        q.innerText = '♛';
+                        q.style.color = (step.type === 'TRY' && step.r === r) ? 'var(--amber)' : 'var(--primary-purple)';
+                        div.appendChild(q);
+                    }
+
+                    board.appendChild(div);
+                }
+            }
+
+            // Sync Stats
+            const statCol = document.getElementById('stat-col');
+            const statD1 = document.getElementById('stat-d1');
+            const statD2 = document.getElementById('stat-d2');
+            
+            if (step.type === 'TRY' && step.isAttacked) {
+                statCol.innerText = "雷达报警！"; statCol.className = "rose";
+            } else {
+                statCol.innerText = "正常"; statCol.className = "emerald";
+            }
+
+            // Sync Results
+            document.getElementById('ans-count').innerText = step.ans.length;
+            const resGrid = document.getElementById('res-grid');
+            resGrid.innerHTML = '';
+            step.ans.forEach(sol => {
+                const preview = document.createElement('div');
+                preview.className = 'res-preview';
+                preview.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+                for(let i=0; i<n*n; i++) {
+                    const r = Math.floor(i/n), c = i%n;
+                    const pc = document.createElement('div');
+                    pc.className = `p-cell ${sol[r] === c ? 'q' : ''}`;
+                    preview.appendChild(pc);
+                }
+                resGrid.appendChild(preview);
+            });
+
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'TRY') {
+                status.innerHTML = `正在尝试在第 <span class="highlight-text">${step.r}</span> 行，第 <span class="highlight-text">${step.c}</span> 列放置皇后。`;
+                if (step.isAttacked) {
+                    subStatus.innerHTML = `❌ <span class="rose">雷达报警！</span> 此位置正处于其他皇后的攻击范围内。`;
+                } else {
+                    subStatus.innerHTML = `✅ <span class="emerald">安全！</span> 放下皇后，去下一行看看。`;
+                }
+            } else if (step.type === 'SUCCESS') {
+                status.innerHTML = `✨ <b>发现完美阵型！</b>`;
+                subStatus.innerText = `所有皇后都安顿好了，保存这套方案。`;
+            } else {
+                status.innerHTML = `回溯：拿起第 <span class="highlight-text">${step.r}</span> 行的皇后。`;
+                subStatus.innerText = `尝试这一行的下一个可能位置。`;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            } else {
+                document.getElementById('next-btn').disabled = true;
+                document.getElementById('status').innerHTML = "🎉 <b>搜寻完毕！</b>";
+            }
+        }
+
+        function reset() {
+            currentStep = 0;
+            document.getElementById('next-btn').disabled = false;
+            render();
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>

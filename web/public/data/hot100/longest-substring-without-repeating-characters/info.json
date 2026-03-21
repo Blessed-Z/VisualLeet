@@ -1,0 +1,17 @@
+{
+  "id": 3,
+  "title": "3. 无重复字符的最长子串",
+  "slug": "longest-substring-without-repeating-characters",
+  "link": "https://leetcode.cn/problems/longest-substring-without-repeating-characters/",
+  "difficulty": "Medium",
+  "description": "给定一个字符串 s ，请你找出其中不含有重复字符的 最长子串 的长度。",
+  "solutions": [
+    {
+      "name": "滑动窗口 (最优)",
+      "file": "hash-map.py",
+      "time": "O(N)",
+      "space": "O(min(M, N))",
+      "is_optimal": true
+    }
+  ]
+}

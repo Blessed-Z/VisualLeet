@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>124. 二叉树中的最大路径和 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1100px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--rose-red); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative; height: 450px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.5s; }
+        .node text { fill: var(--text-color); font-size: 14px; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+        
+        .node.active circle { stroke: var(--amber); stroke-width: 4; fill: rgba(255, 190, 11, 0.1); }
+        .node.computed circle { stroke: var(--emerald-green); }
+        .node.record circle { stroke: var(--rose-red); stroke-width: 5; box-shadow: 0 0 20px var(--rose-red); }
+
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.5s; }
+        .link.best-path { stroke: var(--rose-red); stroke-width: 4; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .info-label { font-size: 12px; font-weight: bold; }
+        .contrib-text { fill: var(--emerald-green); font-size: 10px; }
+        .sum-text { fill: var(--rose-red); font-size: 12px; font-weight: 800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌈 二叉树中的最大路径和</h1>
+        <div class="status-box">
+            <div id="status">寻找最值钱的彩虹桥。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始计算每个节点的贡献值。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+            <svg id="tree-svg"></svg>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            val: -10, id: "0",
+            left: { val: 9, id: "0L", left: null, right: null },
+            right: {
+                val: 20, id: "0R",
+                left: { val: 15, id: "0RL", left: null, right: null },
+                right: { val: 7, id: "0RR", left: null, right: null }
+            }
+        };
+
+        let nodes = [], links = [], steps = [], currentStep = 0, zoomFactor = 1.0, maxGlobal = -Infinity;
+
+        function flatten(node, x, y, dx) {
+            if (!node) return;
+            const n = { ...node, x, y };
+            nodes.push(n);
+            if (node.left) {
+                links.push({ source: n, target: node.left.id, sid: node.id, tid: node.left.id });
+                flatten(node.left, x - dx, y + 80, dx / 2);
+            }
+            if (node.right) {
+                links.push({ source: n, target: node.right.id, sid: node.id, tid: node.right.id });
+                flatten(node.right, x + dx, y + 80, dx / 2);
+            }
+        }
+
+        function solve(node) {
+            if (!node) return 0;
+            
+            steps.push({ type: 'ENTER', node });
+            
+            const leftOrig = solve(node.left);
+            const left = Math.max(leftOrig, 0);
+            
+            const rightOrig = solve(node.right);
+            const right = Math.max(rightOrig, 0);
+            
+            const curSum = node.val + left + right;
+            maxGlobal = Math.max(maxGlobal, curSum);
+            
+            const contrib = Math.max(left, right) + node.val;
+            
+            steps.push({ 
+                type: 'LEAVE', node, left, right, curSum, contrib, 
+                isRecord: curSum === maxGlobal, globalAns: maxGlobal 
+            });
+            
+            return contrib;
+        }
+
+        const svg = document.getElementById('tree-svg');
+
+        function render() {
+            svg.innerHTML = '';
+            const step = steps[currentStep] || { node: null, globalAns: -Infinity };
+            
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            nodes.forEach(n => {
+                minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+                minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+            });
+
+            links.forEach(l => {
+                const targetNode = nodes.find(n => n.id === l.tid);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', l.source.x); line.setAttribute('y1', l.source.y);
+                line.setAttribute('x2', targetNode.x); line.setAttribute('y2', targetNode.y);
+                line.setAttribute('class', 'link');
+                svg.appendChild(line);
+            });
+
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let cls = 'node';
+                
+                const history = steps.slice(0, currentStep + 1).filter(s => s.type === 'LEAVE' && s.node.id === n.id);
+                const lastLeave = history[history.length - 1];
+                
+                if (step.node && step.node.id === n.id) cls += ' active';
+                if (lastLeave) {
+                    cls += ' computed';
+                    if (lastLeave.curSum === step.globalAns && step.globalAns !== -Infinity) cls += ' record';
+                }
+
+                g.setAttribute('class', cls);
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', 20);
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', n.x); t.setAttribute('y', n.y); t.textContent = n.val;
+                
+                if (lastLeave) {
+                    const contribT = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    contribT.setAttribute('x', n.x + 25); contribT.setAttribute('y', n.y + 15);
+                    contribT.setAttribute('class', 'contrib-text');
+                    contribT.textContent = `C:${lastLeave.contrib}`;
+                    g.appendChild(contribT);
+
+                    const sumT = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    sumT.setAttribute('x', n.x); sumT.setAttribute('y', n.y - 30);
+                    sumT.setAttribute('class', 'sum-text');
+                    sumT.setAttribute('text-anchor', 'middle');
+                    sumT.textContent = lastLeave.curSum;
+                    g.appendChild(sumT);
+                }
+
+                g.appendChild(c); g.appendChild(t);
+                svg.appendChild(g);
+            });
+
+            const width = Math.max(maxX - minX + 150, 400);
+            const height = Math.max(maxY - minY + 150, 300);
+            const midX = (minX + maxX) / 2 || 0;
+            const midY = (minY + maxY) / 2 || 0;
+            const vbW = width * zoomFactor; const vbH = height * zoomFactor;
+            svg.setAttribute('viewBox', `${midX - vbW/2} ${midY - vbH/2} ${vbW} ${vbH}`);
+        }
+
+        function nextStep() {
+            if (currentStep >= steps.length) return;
+            const step = steps[currentStep];
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.type === 'ENTER') {
+                status.innerHTML = `来到节点 <span class="amber highlight">${step.node.val}</span>。`;
+                subStatus.innerText = `去看看孩子们能给我贡献多少价值。`;
+            } else {
+                status.innerHTML = `计算节点 <span class="amber highlight">${step.node.val}</span> 的结果。`;
+                subStatus.innerHTML = `左孩子贡献: <span class="emerald">${step.left}</span>, 右孩子贡献: <span class="emerald">${step.right}</span>。<br>` +
+                                     `在这里“转弯”的总和 = ${step.node.val} + ${step.left} + ${step.right} = <span class="rose highlight">${step.curSum}</span>。`;
+                if (step.isRecord) {
+                    status.innerHTML = `🔥 <b>新纪录诞生！</b> 目前全球最大和为 <span class="rose highlight">${step.globalAns}</span>。`;
+                }
+            }
+
+            render();
+            currentStep++;
+            if (currentStep >= steps.length) {
+                document.getElementById('next-btn').disabled = true;
+                status.innerHTML = `🏁 <b>扫描完成！</b> 最大路径和为 <span class="rose highlight">${maxGlobal}</span>。`;
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; zoomFactor = Math.max(0.2, Math.min(5, zoomFactor)); render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; maxGlobal = -Infinity; init(); }
+
+        function init() {
+            nodes = []; links = []; steps = [];
+            flatten(treeData, 0, 0, 150);
+            solve(treeData);
+            render();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

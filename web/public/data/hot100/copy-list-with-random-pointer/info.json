@@ -1,0 +1,23 @@
+{
+  "id": 138,
+  "slug": "copy-list-with-random-pointer",
+  "title": "复制带随机指针的链表",
+  "difficulty": "Medium",
+  "description": "给你一个长度为 n 的链表，每个节点包含一个额外增加的随机指针 random ，该指针可以指向链表中的任何节点或空节点。构造这个链表的深拷贝。",
+  "complexity": {
+    "time": "O(N)",
+    "space": "O(N)"
+  },
+  "category": "LinkedList",
+  "tags": ["Hash Table", "Linked List"],
+  "solutions": [
+    {
+      "language": "python",
+      "path": "solutions/solution.py",
+      "file": "solution.py",
+      "name": "哈希表映射法",
+      "time": "O(N)",
+      "space": "O(N)"
+    }
+  ]
+}

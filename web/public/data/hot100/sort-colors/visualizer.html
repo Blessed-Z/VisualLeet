@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>75. 颜色分类 - 可视化演示</title>
+    <style>
+        :root {
+            --red-color: #f43f5e;
+            --white-color: #f8fafc;
+            --blue-color: #3b82f6;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: #a855f7;
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .balls-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            min-height: 80px;
+            align-items: center;
+        }
+
+        .ball {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: monospace;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid transparent;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .ball-0 { background-color: var(--red-color); color: white; }
+        .ball-1 { background-color: var(--white-color); color: #333; }
+        .ball-2 { background-color: var(--blue-color); color: white; }
+
+        .pointers-row {
+            display: grid;
+            grid-template-columns: repeat(10, 45px); /* Adjusted based on balls */
+            gap: 12px;
+            justify-content: center;
+            height: 60px;
+            position: relative;
+        }
+
+        .pointer {
+            position: absolute;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.4s ease;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .pointer-arrow { font-size: 18px; line-height: 1; }
+        
+        #p0-ptr { color: var(--red-color); }
+        #p2-ptr { color: var(--blue-color); }
+        #curr-ptr { color: var(--amber-yellow); top: 30px; }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: #a855f7;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .ball.swapping {
+            animation: swap-shake 0.4s;
+            z-index: 100;
+        }
+
+        @keyframes swap-shake {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px) scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>75. 颜色分类 (Sort Colors)</h2>
+    
+    <div class="visualization-area">
+        <div class="balls-row" id="ballsRow"></div>
+        <div class="pointers-row" id="pointersRow">
+            <div id="p0-ptr" class="pointer"><span class="pointer-arrow">▲</span><span>p0</span></div>
+            <div id="p2-ptr" class="pointer"><span class="pointer-arrow">▲</span><span>p2</span></div>
+            <div id="curr-ptr" class="pointer"><span class="pointer-arrow">▲</span><span>curr</span></div>
+        </div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始整理彩球</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    let nums = [2, 0, 2, 1, 1, 0];
+    let p0 = 0;
+    let p2 = nums.length - 1;
+    let curr = 0;
+    const ballWidth = 45 + 12; // width + gap
+
+    function init() {
+        nums = [2, 0, 2, 1, 1, 0];
+        p0 = 0;
+        p2 = nums.length - 1;
+        curr = 0;
+        render();
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '准备就绪。三指针就位。';
+    }
+
+    function render() {
+        const ballsRow = document.getElementById('ballsRow');
+        ballsRow.innerHTML = '';
+        nums.forEach((num, idx) => {
+            const ball = document.createElement('div');
+            ball.className = `ball ball-${num}`;
+            ball.id = `ball-${idx}`;
+            ball.textContent = num;
+            ballsRow.appendChild(ball);
+        });
+
+        const p0Ptr = document.getElementById('p0-ptr');
+        const p2Ptr = document.getElementById('p2-ptr');
+        const currPtr = document.getElementById('curr-ptr');
+
+        const offset = 0; // base offset if needed
+        p0Ptr.style.left = `${p0 * ballWidth}px`;
+        p2Ptr.style.left = `${p2 * ballWidth}px`;
+        currPtr.style.left = `${curr * ballWidth}px`;
+    }
+
+    async function next() {
+        if (curr > p2) return;
+
+        const status = document.getElementById('status');
+        const val = nums[curr];
+
+        if (val === 0) {
+            status.innerHTML = `发现红球 (0)！与左边界 <b>p0</b> 交换。`;
+            document.getElementById(`ball-${curr}`).classList.add('swapping');
+            document.getElementById(`ball-${p0}`).classList.add('swapping');
+            
+            await new Promise(r => setTimeout(r, 400));
+            
+            [nums[p0], nums[curr]] = [nums[curr], nums[p0]];
+            p0++;
+            curr++;
+        } else if (val === 2) {
+            status.innerHTML = `发现蓝球 (2)！与右边界 <b>p2</b> 交换。`;
+            document.getElementById(`ball-${curr}`).classList.add('swapping');
+            document.getElementById(`ball-${p2}`).classList.add('swapping');
+            
+            await new Promise(r => setTimeout(r, 400));
+
+            [nums[p2], nums[curr]] = [nums[curr], nums[p2]];
+            p2--;
+            // Do not increment curr as the swapped ball needs inspection
+        } else {
+            status.innerHTML = `发现白球 (1)，继续巡逻。`;
+            curr++;
+        }
+
+        render();
+
+        if (curr > p2) {
+            document.getElementById('nextBtn').disabled = true;
+            status.innerHTML = `🏁 整理完成！红、白、蓝三色球已归位。`;
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

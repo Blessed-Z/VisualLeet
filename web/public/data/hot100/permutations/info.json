@@ -1,0 +1,18 @@
+{
+  "id": 46,
+  "slug": "permutations",
+  "title": "全排列",
+  "difficulty": "Medium",
+  "category": "回溯",
+  "tags": ["Array", "Backtracking"],
+  "description": "给定一个不含重复数字的数组 nums ，返回其 所有可能的全排列 。你可以按任意顺序返回答案。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "经典回溯法",
+      "time": "O(N \\times N!)",
+      "space": "O(N)"
+    }
+  ]
+}

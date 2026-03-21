@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>层序遍历可视化</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        #container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        #viz-area {
+            flex: 2;
+            min-width: 600px;
+            height: 500px;
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            border: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #queue-container, #result-container {
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #30363d;
+        }
+        #queue-container { flex: 1; }
+        #result-container { flex: 2; overflow-y: auto; }
+        
+        h3 { margin-top: 0; color: #a855f7; }
+        
+        .queue-item {
+            display: inline-block;
+            background-color: #3b0764;
+            border: 1px solid #a855f7;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 6px;
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+        }
+        
+        .node circle {
+            fill: #1e293b;
+            stroke: #475569;
+            stroke-width: 2px;
+            transition: all 0.3s;
+        }
+        .node text {
+            fill: #e2e8f0;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+        .node.active circle {
+            stroke: #f43f5e;
+            stroke-width: 4px;
+            fill: #4c0519;
+        }
+        .node.in-queue circle {
+            stroke: #a855f7;
+            stroke-width: 2px;
+            fill: #3b0764;
+        }
+        .node.visited circle {
+            fill: #064e3b;
+            stroke: #10b981;
+        }
+        .link {
+            stroke: #475569;
+            stroke-width: 2px;
+            fill: none;
+        }
+        #controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        button {
+            background-color: #a855f7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #9333ea; }
+        button:disabled { background-color: #30363d; color: #8b949e; cursor: not-allowed; }
+        
+        #status-text {
+            margin-top: 10px;
+            font-size: 1.1em;
+            color: #f43f5e;
+            text-align: center;
+            min-height: 1.5em;
+        }
+        .level-row {
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #30363d;
+        }
+        .level-tag {
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .val-tag {
+            background-color: #3b0764;
+            padding: 2px 8px;
+            margin: 0 4px;
+            border-radius: 4px;
+            color: #a855f7;
+            border: 1px solid #a855f7;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="viz-area">
+            <h3>层序遍历：坐电梯发糖果</h3>
+            <div id="status-text">点击“下一步”开始发糖果</div>
+            <svg id="tree-svg"></svg>
+            <div id="controls">
+                <button id="reset-btn">重置</button>
+                <button id="next-btn">下一步</button>
+            </div>
+        </div>
+        <div id="sidebar">
+            <div id="queue-container">
+                <h3>排队中 (Queue)</h3>
+                <div id="queue-list"></div>
+            </div>
+            <div id="result-container">
+                <h3>已领糖果清单 (Result)</h3>
+                <div id="result-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const treeData = {
+            id: 1, val: 3,
+            left: { id: 2, val: 9, left: null, right: null },
+            right: {
+                id: 3, val: 20,
+                left: { id: 4, val: 15, left: null, right: null },
+                right: { id: 5, val: 7, left: null, right: null }
+            }
+        };
+
+        let nodes = [];
+        let links = [];
+        let queue = [];
+        let result = [];
+        let currentLevel = [];
+        let levelSize = 0;
+        let processedInLevel = 0;
+        let finished = false;
+
+        function flatten(node, x, y, dx) {
+            if (!node) return;
+            node.x = x; node.y = y;
+            nodes.push(node);
+            if (node.left) {
+                links.push({ source: node, target: node.left });
+                flatten(node.left, x - dx, y + 80, dx / 2);
+            }
+            if (node.right) {
+                links.push({ source: node, target: node.right });
+                flatten(node.right, x + dx, y + 80, dx / 2);
+            }
+        }
+
+        const svg = document.getElementById('tree-svg');
+        const queueList = document.getElementById('queue-list');
+        const resultList = document.getElementById('result-list');
+        const statusText = document.getElementById('status-text');
+        const nextBtn = document.getElementById('next-btn');
+
+        function init() {
+            nodes = []; links = []; queue = [treeData]; result = [];
+            currentLevel = []; levelSize = 1; processedInLevel = 0; finished = false;
+            flatten(treeData, 400, 50, 150);
+            statusText.innerText = "根节点的老爷爷首先进入排队袋子";
+            nextBtn.disabled = false;
+            render();
+        }
+
+        function render() {
+            svg.innerHTML = '';
+            
+            if (nodes.length > 0) {
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                nodes.forEach(n => {
+                    minX = Math.min(minX, n.x);
+                    maxX = Math.max(maxX, n.x);
+                    minY = Math.min(minY, n.y);
+                    maxY = Math.max(maxY, n.y);
+                });
+                
+                const padding = 40;
+                const width = maxX - minX + padding * 2;
+                const height = maxY - minY + padding * 2;
+                svg.setAttribute('viewBox', `${minX - padding} ${minY - padding} ${width} ${height}`);
+            }
+
+            links.forEach(l => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', l.source.x); line.setAttribute('y1', l.source.y);
+                line.setAttribute('x2', l.target.x); line.setAttribute('y2', l.target.y);
+                line.setAttribute('class', 'link');
+                svg.appendChild(line);
+            });
+            nodes.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let className = 'node';
+                if (queue.includes(n)) className += ' in-queue';
+                if (result.flat().includes(n.val)) className += ' visited';
+                g.setAttribute('class', className);
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', n.x); circle.setAttribute('cy', n.y); circle.setAttribute('r', 20);
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', n.x); text.setAttribute('y', n.y); text.textContent = n.val;
+                g.appendChild(circle); g.appendChild(text); svg.appendChild(g);
+            });
+            queueList.innerHTML = '';
+            queue.forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'queue-item'; div.innerText = n.val; queueList.appendChild(div);
+            });
+            resultList.innerHTML = '';
+            result.forEach((lvl, i) => {
+                const div = document.createElement('div');
+                div.className = 'level-row';
+                div.innerHTML = `<span class="level-tag">第 ${i+1} 层:</span>` + lvl.map(v => `<span class="val-tag">${v}</span>`).join('');
+                resultList.appendChild(div);
+            });
+        }
+
+        nextBtn.onclick = () => {
+            if (finished) return;
+            if (processedInLevel === 0) {
+                levelSize = queue.length;
+                currentLevel = [];
+            }
+            const node = queue.shift();
+            currentLevel.push(node.val);
+            processedInLevel++;
+            statusText.innerText = `住户 ${node.val} 领到了糖果`;
+            if (node.left) queue.push(node.left);
+            if (node.right) queue.push(node.right);
+            if (processedInLevel === levelSize) {
+                result.push(currentLevel);
+                processedInLevel = 0;
+                statusText.innerText += `。本层发完啦！`;
+            }
+            if (queue.length === 0) { finished = true; statusText.innerText = "所有住户都领到了糖果！"; nextBtn.disabled = true; }
+            render();
+        };
+
+        document.getElementById('reset-btn').onclick = init;
+        init();
+    </script>
+</body>
+</html>

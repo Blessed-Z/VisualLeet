@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>208. 实现 Trie (前缀树) 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--emerald-green); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .main-content { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+        .visualization-area {
+            position: relative; height: 450px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
+        .panel-box {
+            background: var(--node-bg); border: 1px solid #30363d; border-radius: 15px; padding: 15px;
+        }
+        .panel-title { font-size: 0.8em; color: #8b949e; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; }
+
+        .word-display { font-size: 1.5em; letter-spacing: 5px; font-family: monospace; display: flex; justify-content: center; gap: 5px;}
+        .char-box { width: 30px; height: 35px; border: 1px solid #30363d; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .char-box.active { border-color: var(--amber); background: rgba(255, 190, 11, 0.2); transform: translateY(-3px); }
+
+        svg { width: 100%; height: 100%; }
+        .node circle { fill: var(--node-bg); stroke: #30363d; stroke-width: 2; transition: all 0.4s; }
+        .node text { fill: var(--text-color); font-size: 16px; font-weight: bold; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+        
+        .node.active circle { stroke: var(--amber); stroke-width: 4; fill: rgba(255, 190, 11, 0.1); }
+        .node.end-word circle { stroke: var(--rose-red); stroke-width: 4; fill: rgba(255, 0, 110, 0.1); }
+        .node.success circle { stroke: var(--emerald-green); stroke-width: 4; fill: rgba(6, 214, 160, 0.2); }
+        
+        .link { stroke: #30363d; stroke-width: 2; fill: none; transition: all 0.4s; }
+        .link.active { stroke: var(--amber); stroke-width: 3; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; backdrop-blur: 4px;
+        }
+        .zoom-btn:hover { background: #30363d; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .highlight-text { font-weight: bold; padding: 0 4px; border-radius: 4px; }
+        .end-marker { font-size: 10px; fill: var(--rose-red); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌳 实现 Trie (前缀树)</h1>
+        <div class="status-box">
+            <div id="status">准备开始操作神奇字典树。</div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始。</div>
+        </div>
+
+        <div class="main-content">
+            <div class="visualization-area" id="viz">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                    <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                </div>
+                <svg id="tree-svg"></svg>
+            </div>
+
+            <div class="side-panel">
+                <div class="panel-box">
+                    <div class="panel-title">当前操作</div>
+                    <div id="op-display" style="font-size: 1.2em; font-weight: bold; color: var(--primary-purple); margin-bottom: 10px;"></div>
+                    <div class="word-display" id="word-container"></div>
+                </div>
+                <div class="panel-box">
+                    <div class="panel-title">图例</div>
+                    <div style="font-size: 0.9em; line-height: 1.8;">
+                        <span style="color:var(--rose-red)">❤️</span> 红色节点：完整单词的结尾<br>
+                        <span style="color:var(--emerald-green)">🟢</span> 绿色节点：匹配成功<br>
+                        <span style="color:var(--amber)">🟡</span> 黄色节点：当前正在遍历
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const operations = [
+            { type: 'INSERT', word: 'app' },
+            { type: 'INSERT', word: 'apple' },
+            { type: 'SEARCH', word: 'app' },
+            { type: 'SEARCH', word: 'appl' },
+            { type: 'STARTSWITH', word: 'app' }
+        ];
+
+        let trie = { id: 'root', char: 'R', children: {}, isEnd: false };
+        let nextId = 1;
+        let steps = [];
+        let currentStep = 0;
+        let zoomFactor = 1.0;
+
+        function generateSteps() {
+            trie = { id: 'root', char: 'R', children: {}, isEnd: false };
+            nextId = 1;
+            steps = [];
+
+            operations.forEach(op => {
+                let cur = trie;
+                steps.push({ ...op, action: 'START', activeNode: cur.id, charIdx: -1, treeSnapshot: cloneTree(trie) });
+
+                if (op.type === 'INSERT') {
+                    for (let i = 0; i < op.word.length; i++) {
+                        let char = op.word[i];
+                        let isNew = false;
+                        if (!cur.children[char]) {
+                            cur.children[char] = { id: `n${nextId++}`, char: char, children: {}, isEnd: false };
+                            isNew = true;
+                        }
+                        const prevId = cur.id;
+                        cur = cur.children[char];
+                        steps.push({ ...op, action: 'TRAVERSE', activeNode: cur.id, prevId, charIdx: i, isNew, treeSnapshot: cloneTree(trie) });
+                    }
+                    cur.isEnd = true;
+                    steps.push({ ...op, action: 'MARK_END', activeNode: cur.id, charIdx: op.word.length - 1, treeSnapshot: cloneTree(trie) });
+                } 
+                else if (op.type === 'SEARCH' || op.type === 'STARTSWITH') {
+                    let failed = false;
+                    for (let i = 0; i < op.word.length; i++) {
+                        let char = op.word[i];
+                        if (!cur.children[char]) {
+                            steps.push({ ...op, action: 'FAIL', activeNode: cur.id, charIdx: i, reason: `找不到字符 '${char}' 的分支`, treeSnapshot: cloneTree(trie) });
+                            failed = true;
+                            break;
+                        }
+                        const prevId = cur.id;
+                        cur = cur.children[char];
+                        steps.push({ ...op, action: 'TRAVERSE', activeNode: cur.id, prevId, charIdx: i, treeSnapshot: cloneTree(trie) });
+                    }
+                    if (!failed) {
+                        if (op.type === 'SEARCH') {
+                            if (cur.isEnd) {
+                                steps.push({ ...op, action: 'SUCCESS', activeNode: cur.id, charIdx: op.word.length - 1, reason: `路径走通，且节点有 '#' 结束标记！`, treeSnapshot: cloneTree(trie) });
+                            } else {
+                                steps.push({ ...op, action: 'FAIL', activeNode: cur.id, charIdx: op.word.length - 1, reason: `路径走通了，但节点没有 '#' 结束标记（只是前缀）`, treeSnapshot: cloneTree(trie) });
+                            }
+                        } else {
+                            steps.push({ ...op, action: 'SUCCESS', activeNode: cur.id, charIdx: op.word.length - 1, reason: `只要路径能走完，startsWith 就返回 True！`, treeSnapshot: cloneTree(trie) });
+                        }
+                    }
+                }
+            });
+            steps.push({ action: 'ALL_DONE', treeSnapshot: cloneTree(trie) });
+        }
+
+        function cloneTree(node) {
+            let n = { id: node.id, char: node.char, isEnd: node.isEnd, children: {} };
+            for (let k in node.children) {
+                n.children[k] = cloneTree(node.children[k]);
+            }
+            return n;
+        }
+
+        let nodesArr = [], linksArr = [];
+
+        function flattenTree(node, x, y, dx) {
+            nodesArr.push({ ...node, x, y });
+            let keys = Object.keys(node.children);
+            let totalW = (keys.length - 1) * dx;
+            let startX = x - totalW / 2;
+            
+            keys.forEach((k, i) => {
+                let child = node.children[k];
+                let nx = startX + i * dx;
+                let ny = y + 70;
+                linksArr.push({ sid: node.id, tid: child.id, sx: x, sy: y, tx: nx, ty: ny });
+                flattenTree(child, nx, ny, dx * 0.8);
+            });
+        }
+
+        const svg = document.getElementById('tree-svg');
+
+        function render() {
+            const step = steps[currentStep];
+            if (!step) return;
+
+            // Render Panel
+            if (step.action !== 'ALL_DONE') {
+                document.getElementById('op-display').innerText = `${step.type}( "${step.word}" )`;
+                const container = document.getElementById('word-container');
+                container.innerHTML = '';
+                for(let i=0; i<step.word.length; i++){
+                    const div = document.createElement('div');
+                    div.className = `char-box ${i === step.charIdx ? 'active' : ''}`;
+                    div.innerText = step.word[i];
+                    container.appendChild(div);
+                }
+            }
+
+            // Render Tree
+            svg.innerHTML = '';
+            nodesArr = []; linksArr = [];
+            flattenTree(step.treeSnapshot, 0, 0, 100);
+
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            nodesArr.forEach(n => {
+                minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+                minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+            });
+
+            linksArr.forEach(l => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', l.sx); line.setAttribute('y1', l.sy);
+                line.setAttribute('x2', l.tx); line.setAttribute('y2', l.ty);
+                let cls = 'link';
+                if (step.activeNode === l.tid && step.prevId === l.sid) cls += ' active';
+                line.setAttribute('class', cls);
+                svg.appendChild(line);
+            });
+
+            nodesArr.forEach(n => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                let cls = 'node';
+                if (n.isEnd) cls += ' end-word';
+                if (step.activeNode === n.id) {
+                    cls += step.action === 'SUCCESS' ? ' success' : ' active';
+                }
+                
+                g.setAttribute('class', cls);
+                const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', 20);
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', n.x); t.setAttribute('y', n.y); t.textContent = n.char === 'R' ? '根' : n.char;
+                
+                if (n.isEnd) {
+                    const tag = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    tag.setAttribute('x', n.x + 15); tag.setAttribute('y', n.y - 15);
+                    tag.setAttribute('class', 'end-marker');
+                    tag.textContent = "#";
+                    g.appendChild(tag);
+                }
+
+                g.appendChild(c); g.appendChild(t);
+                svg.appendChild(g);
+            });
+
+            const width = Math.max(maxX - minX + 150, 400);
+            const height = Math.max(maxY - minY + 150, 300);
+            const midX = (minX + maxX) / 2 || 0;
+            const midY = (minY + maxY) / 2 || 0;
+            const vbW = width * zoomFactor; const vbH = height * zoomFactor;
+            svg.setAttribute('viewBox', `${midX - vbW/2} ${midY - vbH/2 - 30} ${vbW} ${vbH}`);
+
+            // Status Update
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (step.action === 'ALL_DONE') {
+                status.innerHTML = `🏁 <b>所有操作执行完毕！</b>`;
+                subStatus.innerText = `一棵前缀树已经完全建立并验证。`;
+                document.getElementById('op-display').innerText = `测试完成`;
+                document.getElementById('word-container').innerHTML = '';
+                document.getElementById('next-btn').disabled = true;
+                return;
+            }
+
+            const opName = step.type === 'INSERT' ? '插入' : step.type === 'SEARCH' ? '搜索' : '前缀搜索';
+            const char = step.charIdx >= 0 ? step.word[step.charIdx] : '';
+
+            if (step.action === 'START') {
+                status.innerHTML = `准备 ${opName} 单词 <span class="amber highlight-text">"${step.word}"</span>。`;
+                subStatus.innerText = `指针回到树根 (Root) 准备出发。`;
+            } else if (step.action === 'TRAVERSE') {
+                status.innerHTML = `处理字符 <span class="purple highlight-text">'${char}'</span>。`;
+                if (step.isNew) {
+                    subStatus.innerText = `树中没有分支 '${char}'，开辟一个新节点并走进去。`;
+                } else {
+                    subStatus.innerText = `树中已存在分支 '${char}'，直接顺着路走进去。`;
+                }
+            } else if (step.action === 'MARK_END') {
+                status.innerHTML = `单词 <span class="amber highlight-text">"${step.word}"</span> 的所有字母均已存入。`;
+                subStatus.innerHTML = `在最后的节点挂上 <span class="rose highlight-text"># (isEnd=True)</span> 牌子，表示单词结尾。`;
+            } else if (step.action === 'FAIL') {
+                status.innerHTML = `❌ <b>${opName} 失败返回 False。</b>`;
+                subStatus.innerText = step.reason;
+            } else if (step.action === 'SUCCESS') {
+                status.innerHTML = `✅ <b>${opName} 成功返回 True！</b>`;
+                subStatus.innerText = step.reason;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                render();
+            }
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; zoomFactor = Math.max(0.4, Math.min(3, zoomFactor)); render(); }
+        function resetZoom() { zoomFactor = 1.0; render(); }
+        function reset() { currentStep = 0; document.getElementById('next-btn').disabled = false; init(); }
+
+        function init() {
+            generateSteps();
+            render();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

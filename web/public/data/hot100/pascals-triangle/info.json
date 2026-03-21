@@ -1,0 +1,18 @@
+{
+  "id": 118,
+  "title": "118. 杨辉三角",
+  "difficulty": "Easy",
+  "description": "给定一个非负整数 numRows，生成「杨辉三角」的前 numRows 行。在「杨辉三角」中，每个数是它左上方和右上方的数的和。",
+  "category": "动态规划",
+  "complexity": {
+    "time": "O(numRows^2)",
+    "space": "O(numRows^2)"
+  },
+  "solutions": [
+    {
+      "id": "dp",
+      "name": "递推构建法",
+      "description": "每一行的首尾元素为 1，中间元素等于上一行对应位置及其前一个位置的元素之和。"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": 146,
+  "slug": "lru-cache",
+  "title": "146. LRU 缓存",
+  "difficulty": "Medium",
+  "description": "设计和实现一个 LRU (最近最少使用) 缓存机制。它应该支持 get 和 put 操作。",
+  "complexity": {
+    "time": "O(1)",
+    "space": "O(capacity)"
+  },
+  "category": "设计",
+  "tags": ["Hash Table", "Linked List", "Design", "Doubly-Linked List"],
+  "solutions": [
+    {
+      "language": "python",
+      "path": "solutions/solution.py",
+      "file": "solution.py",
+      "name": "双向链表+哈希表",
+      "time": "O(1)",
+      "space": "O(capacity)"
+    }
+  ]
+}

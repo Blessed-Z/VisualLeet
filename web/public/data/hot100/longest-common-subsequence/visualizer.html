@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1143. 最长公共子序列 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 900px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .table-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+
+        .dp-table {
+            border-collapse: collapse;
+            font-family: monospace;
+        }
+
+        .dp-table th, .dp-table td {
+            width: 45px;
+            height: 45px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .header-cell { background: #21262d; font-weight: bold; color: var(--amber-yellow); }
+        .dp-cell { background: #1c2128; font-size: 16px; }
+
+        .active { border: 2px solid var(--amber-yellow); transform: scale(1.05); z-index: 10; }
+        .checking-diagonal { background: rgba(16, 185, 129, 0.2); }
+        .checking-neighbors { background: rgba(168, 85, 247, 0.1); }
+        .matched { background: var(--emerald-green); color: black; font-weight: bold; }
+        .best { background: rgba(168, 85, 247, 0.4); }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .formula-box {
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>1143. 最长公共子序列 (LCS)</h2>
+    
+    <div class="table-container">
+        <table class="dp-table" id="dpTable"></table>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始，初始化表格</div>
+
+    <div class="formula-box" id="formula">
+        dp[i][j] = ?
+    </div>
+
+    <div class="controls" style="margin-top: 20px;">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const text1 = "abcde";
+    const text2 = "ace";
+    const M = text1.length;
+    const N = text2.length;
+    let dp = Array.from({ length: M + 1 }, () => Array(N + 1).fill(0));
+    let r = 1, c = 1;
+
+    function init() {
+        const table = document.getElementById('dpTable');
+        table.innerHTML = '';
+        
+        // Header row
+        const headerRow = document.createElement('tr');
+        headerRow.innerHTML = `<th class="header-cell"></th><th class="header-cell">""</th>`;
+        for (let char of text2) headerRow.innerHTML += `<th class="header-cell">${char}</th>`;
+        table.appendChild(headerRow);
+
+        for (let i = 0; i <= M; i++) {
+            const row = document.createElement('tr');
+            const rowHeader = document.createElement('th');
+            rowHeader.className = 'header-cell';
+            rowHeader.textContent = i === 0 ? '""' : text1[i-1];
+            row.appendChild(rowHeader);
+
+            for (let j = 0; j <= N; j++) {
+                const cell = document.createElement('td');
+                cell.className = 'dp-cell';
+                cell.id = `cell-${i}-${j}`;
+                cell.textContent = '0';
+                row.appendChild(cell);
+            }
+            table.appendChild(row);
+        }
+
+        dp = Array.from({ length: M + 1 }, () => Array(N + 1).fill(0));
+        r = 1; c = 1;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '表格初始化完成。第一行和第一列填 0，表示与空串匹配。';
+        document.getElementById('formula').textContent = 'dp[i][j] = ?';
+    }
+
+    function updateView() {
+        document.querySelectorAll('.dp-cell').forEach(cell => cell.classList.remove('active', 'checking-diagonal', 'checking-neighbors'));
+        
+        const cell = document.getElementById(`cell-${r}-${c}`);
+        cell.classList.add('active');
+        
+        const char1 = text1[r-1];
+        const char2 = text2[c-1];
+        const status = document.getElementById('status');
+        const formula = document.getElementById('formula');
+
+        if (char1 === char2) {
+            dp[r][c] = dp[r-1][c-1] + 1;
+            document.getElementById(`cell-${r-1}-${c-1}`).classList.add('checking-diagonal');
+            cell.classList.add('matched');
+            status.textContent = `发现相同字母 '${char1}'！默契分加一：${dp[r-1][c-1]} + 1 = ${dp[r][c]}`;
+            formula.textContent = `dp[${r}][${c}] = dp[${r-1}][${c-1}] + 1`;
+        } else {
+            dp[r][c] = Math.max(dp[r-1][c], dp[r][c-1]);
+            document.getElementById(`cell-${r-1}-${c}`).classList.add('checking-neighbors');
+            document.getElementById(`cell-${r}-${c-1}`).classList.add('checking-neighbors');
+            status.textContent = `字母不同 ('${char1}' vs '${char2}')。取左边或上边最大值：max(${dp[r-1][c]}, ${dp[r][c-1]}) = ${dp[r][c]}`;
+            formula.textContent = `dp[${r}][${c}] = max(dp[${r-1}][${c}], dp[${r}][${c-1}])`;
+        }
+        cell.textContent = dp[r][c];
+    }
+
+    function next() {
+        updateView();
+        
+        c++;
+        if (c > N) {
+            c = 1;
+            r++;
+        }
+        
+        if (r > M) {
+            document.getElementById('nextBtn').disabled = true;
+            document.getElementById('status').textContent = `遍历结束！最长公共子序列长度为: ${dp[M][N]}`;
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

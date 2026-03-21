@@ -1,0 +1,17 @@
+{
+  "id": 234,
+  "title": "234. 回文链表",
+  "slug": "palindrome-linked-list",
+  "link": "https://leetcode.cn/problems/palindrome-linked-list/",
+  "difficulty": "Easy",
+  "description": "给你一个单链表的头节点 head ，请你判断该链表是否为回文链表。如果是，返回 true ；否则，返回 false 。",
+  "solutions": [
+    {
+      "name": "数组辅助法 (直观)",
+      "file": "array-list.py",
+      "time": "O(N)",
+      "space": "O(N)",
+      "is_optimal": true
+    }
+  ]
+}

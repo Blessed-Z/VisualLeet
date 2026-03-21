@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --window-color: rgba(167, 139, 250, 0.15);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.95rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .string-row { 
+            position: relative; display: flex; gap: 8px; justify-content: center; 
+            margin-top: 60px; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 20px;
+        }
+        .char-box { 
+            width: 45px; height: 45px; border: 1px solid #3f3f46; border-radius: 10px; 
+            display: flex; align-items: center; justify-content: center; font-size: 1.1rem; 
+            background: #18181b; transition: all 0.4s; position: relative; z-index: 10;
+        }
+        
+        /* 滑动窗口遮罩 */
+        #window-mask {
+            position: absolute; height: 55px; top: 15px;
+            background: var(--window-color); border: 2px solid var(--primary-violet);
+            border-radius: 12px; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5; box-shadow: 0 0 20px rgba(167, 139, 250, 0.2);
+        }
+
+        .pointer { 
+            position: absolute; display: flex; flex-direction: column; align-items: center; 
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); width: 45px; z-index: 20;
+        }
+        .ptr-label { font-size: 0.6rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; text-transform: uppercase; }
+        .ptr-arrow { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid currentColor; }
+        
+        #left-ptr { color: var(--primary-rose); top: -45px; }
+        #right-ptr { color: var(--primary-emerald); bottom: -45px; transform: rotate(180deg); }
+        #right-ptr .ptr-label { transform: rotate(-180deg); }
+
+        .hash-table { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); 
+            gap: 10px; width: 100%; max-width: 600px; margin-top: 20px;
+        }
+        .hash-item { 
+            background: var(--card-bg); border: 1px solid var(--border-color); 
+            padding: 8px; border-radius: 12px; text-align: center; font-size: 0.8rem;
+        }
+        .hash-char { color: var(--primary-violet); font-weight: bold; margin-right: 4px; }
+        .hash-val { color: #71717a; font-mono; }
+
+        .stats { display: flex; gap: 15px; width: 100%; max-width: 600px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 12px; border-radius: 20px; text-align: center; flex: 1; }
+        .stat-val { font-size: 1.4rem; font-weight: 800; color: var(--primary-emerald); font-mono; }
+        .stat-name { font-size: 0.6rem; color: #636366; text-transform: uppercase; margin-top: 4px; font-weight: bold; }
+
+        .controls { display: flex; gap: 16px; margin-top: 10px; }
+        button { 
+            padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); 
+            background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; 
+        }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！我们要找不含重复字母的最长子串。</div>
+        </div>
+
+        <div class="string-row" id="string-row">
+            <div id="window-mask"></div>
+            <div id="left-ptr" class="pointer"><span class="ptr-label">Left</span><div class="ptr-arrow"></div></div>
+            <div id="right-ptr" class="pointer"><span class="ptr-label">Right</span><div class="ptr-arrow"></div></div>
+            <!-- Chars will be injected here -->
+        </div>
+
+        <div class="stats">
+            <div class="stat-card"><div id="cur-len" class="stat-val">0</div><div class="stat-name">当前窗口长度</div></div>
+            <div class="stat-card"><div id="max-len" class="stat-val" style="color:var(--primary-violet)">0</div><div class="stat-name">历史最长纪录</div></div>
+        </div>
+
+        <div class="hash-table" id="hash-table">
+            <!-- Hash items will be injected here -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const s = "abcabcbb";
+        let left = 0;
+        let right = 0;
+        let maxLen = 0;
+        const dic = {}; // char -> index+1
+
+        function init() {
+            const row = document.getElementById('string-row');
+            const oldChars = row.querySelectorAll('.char-box');
+            oldChars.forEach(c => c.remove());
+
+            s.split('').forEach((char, idx) => {
+                const div = document.createElement('div');
+                div.className = 'char-box';
+                div.id = `char-${idx}`;
+                div.innerText = char;
+                row.appendChild(div);
+            });
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function updateUI() {
+            const row = document.getElementById('string-row');
+            const charBoxes = row.querySelectorAll('.char-box');
+            const boxWidth = 45 + 8; // width + gap
+            const startOffset = row.offsetWidth / 2 - (s.length * boxWidth - 8) / 2;
+
+            // Update Pointers
+            document.getElementById('left-ptr').style.left = `${startOffset + left * boxWidth}px`;
+            document.getElementById('right-ptr').style.left = `${startOffset + right * boxWidth}px`;
+
+            // Update Window Mask
+            const mask = document.getElementById('window-mask');
+            mask.style.left = `${startOffset + left * boxWidth - 5}px`;
+            mask.style.width = `${(right - left + 1) * boxWidth - 8 + 10}px`;
+
+            // Update Stats
+            const curLen = right - left + 1;
+            document.getElementById('cur-len').innerText = curLen;
+            document.getElementById('max-len').innerText = maxLen;
+
+            // Update Hash Table display
+            const ht = document.getElementById('hash-table');
+            ht.innerHTML = Object.entries(dic).map(([char, pos]) => `
+                <div class="hash-item">
+                    <span class="hash-char">${char}</span>
+                    <span class="hash-val">pos: ${pos}</span>
+                </div>
+            `).join('');
+        }
+
+        function nextStep() {
+            if (right >= s.length) return;
+            const status = document.getElementById('status');
+            const char = s[right];
+
+            if (char in dic) {
+                const prevPos = dic[char];
+                if (prevPos > left) {
+                    status.innerHTML = `遇到重复字母 <span class="highlight">${char}</span>！<br>它上次出现在位置 ${prevPos}。左边界从 ${left} <span style="color:var(--primary-rose)">跳跃</span> 到 ${prevPos}。`;
+                    left = prevPos;
+                } else {
+                    status.innerHTML = `遇到字母 <span class="highlight">${char}</span>。虽然它出现过，但在窗口左边，不影响！`;
+                }
+            } else {
+                status.innerHTML = `吃进新字母 <span class="highlight">${char}</span>。当前窗口没有重复，继续向右伸长。`;
+            }
+
+            dic[char] = right + 1;
+            maxLen = Math.max(maxLen, right - left + 1);
+            updateUI();
+            
+            if (right < s.length - 1) {
+                right++;
+            } else {
+                status.innerHTML = `🎉 扫描完成！不含重复字符的最长子串长度为 <span class="highlight" style="color:var(--primary-emerald)">${maxLen}</span>。`;
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function reset() {
+            left = 0; right = 0; maxLen = 0;
+            for(let k in dic) delete dic[k];
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            init();
+        }
+
+        init();
+        window.onresize = updateUI;
+    </script>
+</body>
+</html>

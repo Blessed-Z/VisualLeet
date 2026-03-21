@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --purple: #8b5cf6;
+            --rose: #ec4899;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --bg: #0f172a;
+            --box-bg: rgba(30, 41, 59, 0.7);
+        }
+        body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 40px; }
+        
+        .status-card {
+            background: rgba(30, 41, 59, 0.5); padding: 15px 25px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; color: var(--amber); font-size: 1.1rem;
+        }
+
+        .heaps-container { display: flex; justify-content: center; gap: 80px; width: 100%; position: relative; }
+        
+        /* Heap Box */
+        .heap-box {
+            width: 250px; height: 300px; background: var(--box-bg); border: 2px solid #475569;
+            border-radius: 20px; display: flex; flex-direction: column; align-items: center; padding: 15px;
+            position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .heap-box.left { border-color: var(--purple); }
+        .heap-box.right { border-color: var(--rose); }
+        .heap-box::before {
+            content: attr(data-title); position: absolute; top: -30px; font-weight: bold; font-size: 1rem;
+        }
+        .heap-box.left::before { color: var(--purple); }
+        .heap-box.right::before { color: var(--rose); }
+
+        .balls-container {
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-content: flex-start;
+            margin-top: 20px; width: 100%; height: 100%;
+        }
+
+        .ball {
+            width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.1rem; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; border: 2px solid rgba(255,255,255,0.2);
+            animation: bounceIn 0.5s ease-out;
+        }
+        .ball.left-ball { background: var(--purple); box-shadow: 0 0 10px var(--purple); }
+        .ball.right-ball { background: var(--rose); box-shadow: 0 0 10px var(--rose); }
+        .ball.top { border: 3px solid #fff; transform: scale(1.1); z-index: 10; }
+
+        @keyframes bounceIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+        /* Median Area */
+        .median-display {
+            background: rgba(16, 185, 129, 0.1); border: 2px solid var(--emerald); border-radius: 15px;
+            padding: 20px 40px; font-size: 2rem; font-weight: bold; color: var(--emerald);
+            box-shadow: 0 0 20px var(--emerald); display: flex; flex-direction: column; align-items: center;
+        }
+        .median-label { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px; }
+
+        .controls { display: flex; gap: 15px; }
+        button {
+            padding: 12px 25px; border-radius: 10px; border: none; background: #334155; color: white;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-2px); }
+        button.primary { background: var(--purple); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .flow-line {
+            position: absolute; height: 2px; background: var(--amber); top: 150px; z-index: 0;
+            transition: width 0.5s; width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card" id="status">准备开始添加数字...</div>
+        
+        <div class="median-display">
+            <span class="median-label">当前中位数</span>
+            <span id="median-val">0.0</span>
+        </div>
+
+        <div class="heaps-container">
+            <div class="heap-box left" data-title="左侧大顶堆 (存较小值)">
+                <div class="balls-container" id="left-balls"></div>
+            </div>
+            <div class="heap-box right" data-title="右侧小顶堆 (存较大值)">
+                <div class="balls-container" id="right-balls"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button class="primary" onclick="nextStep()" id="next-btn">添加数字</button>
+        </div>
+    </div>
+
+    <script>
+        const inputData = [5, 2, 10, 8, 1, 3];
+        let dataIdx = 0;
+        let leftHeap = [];  // We store them as normal numbers, but show logic
+        let rightHeap = [];
+        let state = 'idle';
+
+        function getMedian() {
+            if (leftHeap.length === 0 && rightHeap.length === 0) return 0;
+            if (leftHeap.length > rightHeap.length) return Math.max(...leftHeap);
+            return (Math.max(...leftHeap) + Math.min(...rightHeap)) / 2.0;
+        }
+
+        function render() {
+            const leftContainer = document.getElementById('left-balls');
+            const rightContainer = document.getElementById('right-balls');
+            leftContainer.innerHTML = '';
+            rightContainer.innerHTML = '';
+
+            const leftTop = Math.max(...leftHeap);
+            const rightTop = Math.min(...rightHeap);
+
+            leftHeap.sort((a,b) => b-a).forEach(n => {
+                const b = document.createElement('div');
+                b.className = `ball left-ball ${n === leftTop ? 'top' : ''}`;
+                b.innerText = n;
+                leftContainer.appendChild(b);
+            });
+
+            rightHeap.sort((a,b) => a-b).forEach(n => {
+                const b = document.createElement('div');
+                b.className = `ball right-ball ${n === rightTop ? 'top' : ''}`;
+                b.innerText = n;
+                rightContainer.appendChild(b);
+            });
+
+            document.getElementById('median-val').innerText = getMedian().toFixed(1);
+        }
+
+        async function nextStep() {
+            if (dataIdx >= inputData.length) return;
+            const num = inputData[dataIdx];
+            const status = document.getElementById('status');
+            const btn = document.getElementById('next-btn');
+            btn.disabled = true;
+
+            status.innerText = `来了个新数字：${num}。`;
+            await sleep(800);
+
+            if (leftHeap.length === rightHeap.length) {
+                status.innerText = `平衡法则：左右一样多，新数 ${num} 先去右边转一圈...`;
+                rightHeap.push(num);
+                render();
+                await sleep(1000);
+                
+                const minOfRight = Math.min(...rightHeap);
+                status.innerText = `右边选出最小者 ${minOfRight} 去左边。`;
+                rightHeap = rightHeap.filter(n => n !== minOfRight);
+                leftHeap.push(minOfRight);
+            } else {
+                status.innerText = `平衡法则：左边人多，新数 ${num} 先去左边找大哥...`;
+                leftHeap.push(num);
+                render();
+                await sleep(1000);
+                
+                const maxOfLeft = Math.max(...leftHeap);
+                status.innerText = `左边踢出最大者 ${maxOfLeft} 去右边平衡。`;
+                leftHeap = leftHeap.filter(n => n !== maxOfLeft);
+                rightHeap.push(maxOfLeft);
+            }
+
+            render();
+            dataIdx++;
+            status.innerText += ` 目前中位数是 ${getMedian().toFixed(1)}。`;
+            
+            if (dataIdx < inputData.length) btn.disabled = false;
+            else status.innerText = "数据流已演示完毕。";
+        }
+
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+        function reset() {
+            leftHeap = []; rightHeap = []; dataIdx = 0;
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerText = "准备开始添加数字...";
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "id": 124,
+  "slug": "binary-tree-maximum-path-sum",
+  "title": "二叉树中的最大路径和",
+  "difficulty": "Hard",
+  "category": "二叉树",
+  "tags": ["Tree", "Depth-First Search", "Dynamic Programming", "Binary Tree"],
+  "description": "二叉树中的 路径 被定义为一条节点序列，序列中每对相邻节点之间都存在一条边。路径和 是路径中各节点值的总和。给你一个二叉树的根节点 root ，返回其 最大路径和 。",
+  "solutions": [
+    {
+      "language": "python",
+      "file": "solution.py",
+      "name": "后序遍历计算贡献",
+      "time": "O(N)",
+      "space": "O(H)"
+    }
+  ]
+}

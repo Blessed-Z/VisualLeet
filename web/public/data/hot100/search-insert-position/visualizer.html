@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>35. 搜索插入位置 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        html, body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow-x: hidden; overflow-y: auto;
+        }
+
+        body { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+
+        .container {
+            width: 95%; max-width: 1000px;
+            display: flex; flex-direction: column; gap: 20px; padding-bottom: 100px;
+        }
+
+        .status-box {
+            background-color: var(--node-bg); padding: 20px; border-radius: 12px;
+            border-left: 5px solid var(--primary-purple); min-height: 80px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.6;
+        }
+
+        .visualization-area {
+            position: relative; height: 350px; border: 1px solid #30363d; border-radius: 20px;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            display: flex; align-items: center; justify-content: center; overflow: visible;
+        }
+
+        .array-row {
+            display: flex; gap: 10px; position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .cell-container {
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            position: relative;
+        }
+
+        .cell {
+            width: 60px; height: 60px; border-radius: 12px;
+            background-color: var(--node-bg); border: 2px solid #30363d;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.2em; transition: all 0.4s;
+        }
+
+        .cell.active { border-color: var(--amber); transform: scale(1.1); box-shadow: 0 0 15px var(--amber); }
+        .cell.discarded { opacity: 0.2; }
+        .cell.target-found { border-color: var(--emerald-green); color: var(--emerald-green); box-shadow: 0 0 15px var(--emerald-green); }
+
+        .pointer {
+            position: absolute; width: 60px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8em; font-weight: bold; text-transform: uppercase;
+            border-radius: 6px; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+        }
+
+        #ptr-left { background: var(--primary-purple); color: white; top: -45px; }
+        #ptr-right { background: var(--rose-red); color: white; top: -45px; }
+        #ptr-mid { background: var(--amber); color: black; bottom: -45px; }
+
+        .zoom-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .zoom-btn {
+            width: 35px; height: 35px; border-radius: 8px; background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d; color: var(--text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button {
+            padding: 12px 35px; border-radius: 35px; border: none; cursor: pointer;
+            font-weight: bold; transition: all 0.3s; font-size: 1.1em;
+        }
+        .btn-next { background-color: var(--emerald-green); color: #000; }
+        .btn-reset { background-color: #30363d; color: var(--text-color); }
+        button:disabled { opacity: 0.3; }
+
+        .highlight-text { font-weight: bold; color: var(--amber); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 搜索插入位置</h1>
+        <div class="status-box">
+            <div id="status">准备在数组中寻找目标。数组: <span class="highlight-text">[1, 3, 5, 6]</span>, 目标: <span class="highlight-text">5</span></div>
+            <div id="sub-status" style="font-size: 0.85em; color: #8b949e; margin-top: 8px;">点击下一步开始二分查找。</div>
+        </div>
+
+        <div class="visualization-area" id="viz">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+                <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+            </div>
+
+            <div id="ptr-left" class="pointer">Left</div>
+            <div id="ptr-right" class="pointer">Right</div>
+            <div id="ptr-mid" class="pointer" style="opacity:0">Mid</div>
+
+            <div class="array-row" id="array-container"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="reset()">重置</button>
+            <button class="btn-next" id="next-btn" onclick="nextStep()">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        const nums = [1, 3, 5, 6];
+        const target = 5;
+        let left = 0;
+        let right = nums.length;
+        let mid = -1;
+        let step = 0;
+        let zoomFactor = 1.0;
+
+        function init() {
+            const container = document.getElementById('array-container');
+            container.innerHTML = '';
+            nums.forEach((n, i) => {
+                const div = document.createElement('div');
+                div.className = 'cell';
+                div.id = `cell-${i}`;
+                div.innerText = n;
+                container.appendChild(div);
+            });
+            // Add a virtual extra cell for right pointer at end
+            const virtualDiv = document.createElement('div');
+            virtualDiv.className = 'cell';
+            virtualDiv.style.borderColor = 'dashed';
+            virtualDiv.style.opacity = '0.3';
+            virtualDiv.innerText = 'END';
+            virtualDiv.id = `cell-${nums.length}`;
+            container.appendChild(virtualDiv);
+
+            left = 0;
+            right = nums.length;
+            mid = -1;
+            step = 0;
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('status').innerHTML = `寻找目标 <span class="highlight-text">${target}</span>。二分查找开始！`;
+        }
+
+        function updateUI() {
+            const container = document.getElementById('array-container');
+            container.style.transform = `scale(${zoomFactor})`;
+
+            const lPtr = document.getElementById('ptr-left');
+            const rPtr = document.getElementById('ptr-right');
+            const mPtr = document.getElementById('ptr-mid');
+
+            // Position pointers
+            const getPos = (idx) => {
+                const cell = document.getElementById(`cell-${idx}`);
+                const rect = cell.getBoundingClientRect();
+                const containerRect = document.getElementById('viz').getBoundingClientRect();
+                return rect.left - containerRect.left + rect.width / 2 - 30; // 30 is half pointer width
+            };
+
+            lPtr.style.left = `${getPos(left)}px`;
+            rPtr.style.left = `${getPos(right)}px`;
+            
+            if (mid !== -1) {
+                mPtr.style.opacity = 1;
+                mPtr.style.left = `${getPos(mid)}px`;
+            } else {
+                mPtr.style.opacity = 0;
+            }
+
+            // Cell styles
+            for (let i = 0; i <= nums.length; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                if (!cell) continue;
+                cell.className = 'cell';
+                if (i < left || i > right) cell.classList.add('discarded');
+                if (i === mid) cell.classList.add('active');
+                if (step === -1 && i === left) cell.classList.add('target-found');
+            }
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const subStatus = document.getElementById('sub-status');
+
+            if (left < right) {
+                if (mid === -1 || step % 2 === 0) {
+                    // Step: Calculate Mid
+                    mid = Math.floor(left + (right - left) / 2);
+                    status.innerHTML = `计算中间位置：<span class="highlight-text">mid = ${mid}</span>，数值为 <span class="highlight-text">${nums[mid]}</span>`;
+                    subStatus.innerText = `对比 nums[mid] 与 target (${target})。`;
+                    step++;
+                } else {
+                    // Step: Adjust Boundaries
+                    if (nums[mid] < target) {
+                        status.innerHTML = `数值 <span class="highlight-text">${nums[mid]}</span> 小于目标 <span class="highlight-text">${target}</span>`;
+                        subStatus.innerText = `目标应该在 mid 的右侧，左边界 left 移向 mid + 1。`;
+                        left = mid + 1;
+                    } else {
+                        status.innerHTML = `数值 <span class="highlight-text">${nums[mid]}</span> 大于或等于目标 <span class="highlight-text">${target}</span>`;
+                        subStatus.innerText = `目标可能在 mid 或 mid 的左侧，右边界 right 移向 mid。`;
+                        right = mid;
+                    }
+                    mid = -1;
+                    step++;
+                }
+            } else {
+                status.innerHTML = `🏁 <b>查找结束！</b>`;
+                subStatus.innerHTML = `Left 与 Right 相遇。插入位置（或找到的索引）为 <span class="highlight-text">${left}</span>。`;
+                step = -1; // Special signal for finish
+                document.getElementById('next-btn').disabled = true;
+            }
+            updateUI();
+        }
+
+        function changeZoom(delta) { zoomFactor *= delta; updateUI(); }
+        function resetZoom() { zoomFactor = 1.0; updateUI(); }
+        function reset() { init(); }
+
+        window.onload = init;
+        window.onresize = updateUI;
+    </script>
+</body>
+</html>

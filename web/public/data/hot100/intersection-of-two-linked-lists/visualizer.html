@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(20, 20, 23, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-violet: #a78bfa;
+            --primary-rose: #fb7185;
+            --primary-emerald: #10b981;
+            --primary-amber: #fbbf24;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); margin: 0; color: #fff; height: 100vh;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
+        }
+
+        .container { width: 100%; max-width: 850px; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 20px; }
+        
+        .status-card { 
+            background: var(--card-bg); border: 1px solid var(--border-color); backdrop-blur: 12px;
+            padding: 16px 24px; border-radius: 24px; width: 100%; max-width: 600px; 
+            text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        .status-text { font-size: 0.9rem; color: #d1d1d6; line-height: 1.6; }
+        .highlight { font-weight: 800; color: var(--primary-violet); }
+
+        .linked-list-area { position: relative; width: 100%; height: 300px; margin-top: 40px; }
+        
+        .node {
+            position: absolute; width: 45px; height: 45px; background: #111; border: 1.5px solid #333;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.9rem; transition: all 0.5s;
+        }
+        .node::after {
+            content: '→'; position: absolute; right: -25px; color: #444; font-size: 1.2rem;
+        }
+        .node.last::after { content: '×'; color: #f44336; right: -20px; }
+        
+        .pointer {
+            position: absolute; width: 55px; height: 55px; border-radius: 50%;
+            border: 2px solid transparent; transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; align-items: center; justify-content: center; z-index: 100;
+        }
+        .ptr-label { position: absolute; top: -25px; font-size: 0.6rem; font-weight: 900; text-transform: uppercase; }
+        
+        #ptr-a { border-color: var(--primary-violet); box-shadow: 0 0 15px var(--primary-violet); }
+        #ptr-a .ptr-label { color: var(--primary-violet); }
+        #ptr-b { border-color: var(--primary-rose); box-shadow: 0 0 15px var(--primary-rose); }
+        #ptr-b .ptr-label { color: var(--primary-rose); }
+
+        .controls { display: flex; gap: 16px; margin-top: 20px; }
+        button { padding: 12px 32px; border-radius: 16px; border: 1px solid var(--border-color); background: #1c1c1e; color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        button:hover:not(:disabled) { background: #2c2c2e; transform: translateY(-2px); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div id="status" class="status-text">准备开始！PA 从 A 出发，PB 从 B 出发。</div>
+        </div>
+
+        <div class="linked-list-area" id="list-area">
+            <div id="ptr-a" class="pointer"><span class="ptr-label">PA</span></div>
+            <div id="ptr-b" class="pointer"><span class="ptr-label">PB</span></div>
+            <!-- Nodes -->
+        </div>
+
+        <div class="controls">
+            <button onclick="reset()">重置</button>
+            <button onclick="nextStep()" id="next-btn">下一步</button>
+        </div>
+    </div>
+
+    <script>
+        // List A: A1 -> A2 -> C1 -> C2 -> C3
+        // List B: B1 -> B2 -> B3 -> C1 -> C2 -> C3
+        const commonNodes = ['C1', 'C2', 'C3'];
+        const listA = ['A1', 'A2', ...commonNodes];
+        const listB = ['B1', 'B2', 'B3', ...commonNodes];
+        
+        let paIdx = 0; // index in listA
+        let pbIdx = 0; // index in listB
+        let paPath = 'A'; // 'A' or 'B'
+        let pbPath = 'B'; // 'B' or 'A'
+        let isFinished = false;
+
+        function init() {
+            const area = document.getElementById('list-area');
+            // Render nodes
+            // A Path
+            listA.slice(0, 2).forEach((val, i) => createNode(val, 50, 100 + i * 80, 'a'));
+            // B Path
+            listB.slice(0, 3).forEach((val, i) => createNode(val, 200, 100 + i * 80, 'b'));
+            // Common Path
+            commonNodes.forEach((val, i) => {
+                const node = createNode(val, 125, 300 + i * 80, 'c');
+                if (i === commonNodes.length - 1) node.classList.add('last');
+            });
+            updateUI();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function createNode(val, top, left, type) {
+            const div = document.createElement('div');
+            div.className = `node node-${type}`;
+            div.id = `node-${val}`;
+            div.style.top = top + 'px';
+            div.style.left = left + 'px';
+            div.innerText = val;
+            document.getElementById('list-area').appendChild(div);
+            return div;
+        }
+
+        function getPos(path, idx) {
+            const list = path === 'A' ? listA : listB;
+            if (idx >= list.length) return null;
+            const node = document.getElementById(`node-${list[idx]}`);
+            return { top: node.offsetTop - 5, left: node.offsetLeft - 5 };
+        }
+
+        function updateUI() {
+            const posA = getPos(paPath, paIdx);
+            const posB = getPos(pbPath, pbIdx);
+            
+            if (posA) {
+                document.getElementById('ptr-a').style.top = posA.top + 'px';
+                document.getElementById('ptr-a').style.left = posA.left + 'px';
+                document.getElementById('ptr-a').style.opacity = 1;
+            } else {
+                document.getElementById('ptr-a').style.opacity = 0;
+            }
+
+            if (posB) {
+                document.getElementById('ptr-b').style.top = posB.top + 'px';
+                document.getElementById('ptr-b').style.left = posB.left + 'px';
+                document.getElementById('ptr-b').style.opacity = 1;
+            } else {
+                document.getElementById('ptr-b').style.opacity = 0;
+            }
+        }
+
+        function nextStep() {
+            const status = document.getElementById('status');
+            const nodeA = (paPath === 'A' ? listA : listB)[paIdx];
+            const nodeB = (pbPath === 'B' ? listB : listA)[pbIdx];
+
+            if (nodeA === nodeB && nodeA.startsWith('C')) {
+                status.innerHTML = `🎉 <span class="highlight" style="color:var(--primary-emerald)">相遇了！</span> 交点是 <span class="highlight">${nodeA}</span>。`;
+                document.getElementById(`node-${nodeA}`).style.borderColor = 'var(--primary-emerald)';
+                document.getElementById(`node-${nodeA}`).style.boxShadow = '0 0 20px var(--primary-emerald)';
+                document.getElementById('next-btn').disabled = true;
+                return;
+            }
+
+            // Move PA
+            paIdx++;
+            if (paIdx >= (paPath === 'A' ? listA : listB).length) {
+                paIdx = 0;
+                paPath = paPath === 'A' ? 'B' : 'A';
+                status.innerHTML = `PA 走到头了，瞬移到 ${paPath} 链表开头。`;
+            }
+
+            // Move PB
+            pbIdx++;
+            if (pbIdx >= (pbPath === 'B' ? listB : listA).length) {
+                pbIdx = 0;
+                pbPath = pbPath === 'B' ? 'A' : 'B';
+                status.innerHTML = `PB 走到头了，瞬移到 ${pbPath} 链表开头。`;
+            }
+
+            if (paPath === 'A' && pbPath === 'B') {
+                status.innerHTML = `PA 向右移，PB 向右移...`;
+            }
+
+            updateUI();
+        }
+
+        function reset() {
+            paIdx = 0; pbIdx = 0; paPath = 'A'; pbPath = 'B';
+            document.getElementById('status').innerText = "已重置，准备开始。";
+            document.querySelectorAll('.node').forEach(n => {
+                n.style.borderColor = '#333';
+                n.style.boxShadow = 'none';
+            });
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

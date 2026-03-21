@@ -1,0 +1,18 @@
+{
+  "id": 31,
+  "title": "31. 下一个排列",
+  "difficulty": "Medium",
+  "description": "整数数组的一个 排列  就是将其所有成员以序列或线性顺序排列。找到该数组的下一个字典序更大的排列。如果不存在，则将数组重排为最小的排列（即升序排列）。",
+  "category": "数组",
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  },
+  "solutions": [
+    {
+      "id": "scan-swap",
+      "name": "两遍扫描法",
+      "description": "从后往前找第一个相邻升序对 (i, i+1)，在 i 右侧找第一个比 nums[i] 大的数进行交换，最后反转 i 之后的部分。"
+    }
+  ]
+}

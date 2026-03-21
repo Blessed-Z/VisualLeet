@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>146. LRU 缓存 可视化</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-purple: #9d4edd;
+            --rose-red: #ff006e;
+            --emerald-green: #06d6a0;
+            --amber: #ffbe0b;
+            --text-color: #e6edf3;
+            --node-bg: #161b22;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1000px;
+            text-align: center;
+        }
+
+        .status-box {
+            background-color: var(--node-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary-purple);
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+        }
+
+        .visualization-area {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+
+        .box {
+            background: #1c2128;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hashmap-view {
+            width: 100%;
+        }
+
+        .hash-item {
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            padding: 8px 15px;
+            margin: 5px 0;
+            background: var(--node-bg);
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .list-view {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .node {
+            width: 60px;
+            height: 60px;
+            border: 2px solid var(--primary-purple);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--node-bg);
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .node.sentinel {
+            border-color: #8b949e;
+            border-style: dashed;
+            color: #8b949e;
+        }
+
+        .node.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px var(--amber);
+            border-color: var(--amber);
+        }
+
+        .node-val { font-weight: bold; font-size: 1.2em; }
+        .node-key { font-size: 0.7em; color: #8b949e; }
+
+        .arrow {
+            position: absolute;
+            height: 2px;
+            background: #30363d;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-put { background: var(--rose-red); color: white; }
+        .btn-get { background: var(--emerald-green); color: #000; }
+        .btn-reset { background: #30363d; color: white; }
+
+        .capacity-indicator {
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🧸 神奇的玩具箱 (LRU Cache)</h1>
+        <div class="status-box" id="status">
+            准备就绪！请输入 Key 和 Value 进行操作。
+        </div>
+
+        <div class="visualization-area">
+            <div class="box">
+                <h3>🔍 哈希查找</h3>
+                <div id="hashmap-container" class="hashmap-view"></div>
+                <div class="capacity-indicator" id="capacity-text">容量: 0/3</div>
+            </div>
+            <div class="box">
+                <h3>⛓️ 双向链表 (右侧最新)</h3>
+                <div id="list-container" class="list-view"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="number" id="key-input" placeholder="Key" style="width: 50px; padding: 5px; border-radius: 5px;">
+            <input type="number" id="val-input" placeholder="Value" style="width: 50px; padding: 5px; border-radius: 5px;">
+            <button class="btn-put" onclick="handlePut()">PUT</button>
+            <button class="btn-get" onclick="handleGet()">GET</button>
+            <button class="btn-reset" onclick="reset()">重置</button>
+        </div>
+    </div>
+
+    <script>
+        const CAPACITY = 3;
+        let cache = new Map(); // key -> {val, node}
+        let list = []; // Array of {key, val} representing the linked list
+
+        function updateUI(msg, activeKey = null) {
+            document.getElementById('status').innerText = msg;
+            
+            // Update Hashmap
+            const hashContainer = document.getElementById('hashmap-container');
+            hashContainer.innerHTML = '';
+            cache.forEach((v, k) => {
+                const item = document.createElement('div');
+                item.className = 'hash-item';
+                if (k === activeKey) item.style.borderColor = 'var(--amber)';
+                item.innerHTML = `<span>Key: ${k}</span> <span>Val: ${v.val}</span>`;
+                hashContainer.appendChild(item);
+            });
+
+            // Update List
+            const listContainer = document.getElementById('list-container');
+            listContainer.innerHTML = '';
+            
+            // Head Sentinel
+            const head = createNode('Head', 'S', true);
+            listContainer.appendChild(head);
+
+            list.forEach(item => {
+                const node = createNode(item.key, item.val);
+                if (item.key === activeKey) node.classList.add('active');
+                listContainer.appendChild(node);
+            });
+
+            // Tail Sentinel
+            const tail = createNode('Tail', 'S', true);
+            listContainer.appendChild(tail);
+
+            document.getElementById('capacity-text').innerText = `容量: ${list.length}/${CAPACITY}`;
+        }
+
+        function createNode(key, val, isSentinel = false) {
+            const div = document.createElement('div');
+            div.className = `node ${isSentinel ? 'sentinel' : ''}`;
+            div.innerHTML = `<div class="node-key">${key}</div><div class="node-val">${val}</div>`;
+            return div;
+        }
+
+        function handlePut() {
+            const k = parseInt(document.getElementById('key-input').value);
+            const v = parseInt(document.getElementById('val-input').value);
+            if (isNaN(k) || isNaN(v)) return;
+
+            if (cache.has(k)) {
+                // Update
+                cache.get(k).val = v;
+                list = list.filter(i => i.key !== k);
+                list.push({key: k, val: v});
+                updateUI(`更新玩具 ${k} 的值为 ${v}，并把它移到最前面！`, k);
+            } else {
+                if (list.length >= CAPACITY) {
+                    const oldest = list.shift();
+                    cache.delete(oldest.key);
+                    updateUI(`箱子满了！扔掉最久没玩的玩具 ${oldest.key}...`);
+                    setTimeout(() => {
+                        cache.set(k, {val: v});
+                        list.push({key: k, val: v});
+                        updateUI(`放入新玩具 ${k}！`, k);
+                    }, 800);
+                    return;
+                }
+                cache.set(k, {val: v});
+                list.push({key: k, val: v});
+                updateUI(`放入新玩具 ${k}！`, k);
+            }
+        }
+
+        function handleGet() {
+            const k = parseInt(document.getElementById('key-input').value);
+            if (isNaN(k)) return;
+
+            if (cache.has(k)) {
+                const item = cache.get(k);
+                list = list.filter(i => i.key !== k);
+                list.push({key: k, val: item.val});
+                updateUI(`找到了玩具 ${k}，值是 ${item.val}。因为它刚被玩过，移到最前面！`, k);
+            } else {
+                updateUI(`没找到玩具 ${k} 呢...`, null);
+            }
+        }
+
+        function reset() {
+            cache = new Map();
+            list = [];
+            updateUI('玩具箱已清空。');
+        }
+
+        updateUI('准备就绪！请输入 Key 和 Value 进行操作。');
+    </script>
+</body>
+</html>

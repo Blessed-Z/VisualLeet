@@ -1,0 +1,17 @@
+{
+  "id": 128,
+  "title": "128. 最长连续序列",
+  "slug": "longest-consecutive-sequence",
+  "link": "https://leetcode.cn/problems/longest-consecutive-sequence/",
+  "difficulty": "Medium",
+  "description": "给定一个未排序的整数数组 nums ，找出数字连续的最长序列（不要求序列元素在原数组中连续）的长度。",
+  "solutions": [
+    {
+      "name": "哈希集合起点法 (最优)",
+      "file": "hash-map.py",
+      "time": "O(N)",
+      "space": "O(N)",
+      "is_optimal": true
+    }
+  ]
+}

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>300. 最长递增子序列 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .chart-area {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 10px;
+            height: 200px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            flex: 1;
+        }
+
+        .bar {
+            width: 100%;
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .bar.active-i { border: 2px solid var(--amber-yellow); background: rgba(245, 158, 11, 0.3); }
+        .bar.active-j { border: 2px solid var(--emerald-green); background: rgba(16, 185, 129, 0.3); }
+        .bar.match { background: var(--emerald-green); }
+
+        .bar-label { font-size: 14px; font-family: monospace; }
+
+        .dp-table {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .dp-cell {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: #1c2128;
+            transition: all 0.3s ease;
+        }
+
+        .dp-cell.highlight {
+            background: var(--primary-purple);
+            color: white;
+            border-color: var(--primary-purple);
+            transform: scale(1.1);
+        }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>300. 最长递增子序列 (LIS)</h2>
+    
+    <div class="chart-area" id="chartArea"></div>
+    <div class="dp-table" id="dpTable"></div>
+
+    <div class="status-text" id="status">点击“下一步”开始</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const nums = [10, 9, 2, 5, 3, 7];
+    const n = nums.length;
+    let dp = new Array(n).fill(1);
+    let i = 0;
+    let j = -1;
+    let maxVal = Math.max(...nums);
+
+    function init() {
+        const chartArea = document.getElementById('chartArea');
+        chartArea.innerHTML = '';
+        nums.forEach((num, idx) => {
+            const container = document.createElement('div');
+            container.className = 'bar-container';
+            
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            bar.id = `bar-${idx}`;
+            bar.style.height = `${(num / maxVal) * 150}px`;
+            
+            const label = document.createElement('div');
+            label.className = 'bar-label';
+            label.textContent = num;
+            
+            container.appendChild(bar);
+            container.appendChild(label);
+            chartArea.appendChild(container);
+        });
+
+        const dpTable = document.getElementById('dpTable');
+        dpTable.innerHTML = '';
+        for (let idx = 0; idx < n; idx++) {
+            const cell = document.createElement('div');
+            cell.className = 'dp-cell';
+            cell.id = `dp-${idx}`;
+            cell.textContent = '1';
+            dpTable.appendChild(cell);
+        }
+
+        i = 0;
+        j = -1;
+        dp = new Array(n).fill(1);
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '准备就绪，i 将从 0 开始遍历';
+    }
+
+    function updateView() {
+        document.querySelectorAll('.bar').forEach(b => b.className = 'bar');
+        document.querySelectorAll('.dp-cell').forEach(c => c.classList.remove('highlight'));
+
+        if (i < n) {
+            document.getElementById(`bar-${i}`).classList.add('active-i');
+            document.getElementById(`dp-${i}`).classList.add('highlight');
+            
+            if (j >= 0) {
+                document.getElementById(`bar-${j}`).classList.add('active-j');
+                const status = document.getElementById('status');
+                if (nums[i] > nums[j]) {
+                    status.textContent = `比较 nums[${i}](${nums[i]}) 和 nums[${j}](${nums[j]}): 递增！更新 dp[${i}] = max(${dp[i]}, ${dp[j]}+1)`;
+                } else {
+                    status.textContent = `比较 nums[${i}](${nums[i]}) 和 nums[${j}](${nums[j]}): 不递增，跳过`;
+                }
+            } else {
+                document.getElementById('status').textContent = `当前 i = ${i}，开始检查前面的元素`;
+            }
+        }
+    }
+
+    function next() {
+        if (i >= n) return;
+
+        j++;
+        if (j >= i) {
+            i++;
+            j = -1;
+            if (i >= n) {
+                document.getElementById('nextBtn').disabled = true;
+                const finalAns = Math.max(...dp);
+                document.getElementById('status').textContent = `遍历结束！最长递增子序列长度为: ${finalAns}`;
+                return;
+            }
+            updateView();
+        } else {
+            if (nums[i] > nums[j]) {
+                dp[i] = Math.max(dp[i], dp[j] + 1);
+                document.getElementById(`dp-${i}`).textContent = dp[i];
+            }
+            updateView();
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>62. 不同路径 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 900px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .grid-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+
+        .grid {
+            display: grid;
+            gap: 4px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background: #1c2128;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .cell.active { border: 2px solid var(--amber-yellow); transform: scale(1.05); }
+        .cell.boundary { background: rgba(168, 85, 247, 0.2); }
+        .cell.done { color: var(--emerald-green); font-weight: bold; }
+        .cell.checking { border-color: var(--emerald-green); background: rgba(16, 185, 129, 0.1); }
+
+        .arrow {
+            position: absolute;
+            font-size: 10px;
+            color: #8b949e;
+        }
+        .arrow-up { top: 2px; }
+        .arrow-left { left: 2px; }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .formula {
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>62. 不同路径 (Unique Paths)</h2>
+    
+    <div class="grid-container">
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始，初始化网格</div>
+
+    <div class="formula">
+        dp[i][j] = dp[i-1][j] (上) + dp[i][j-1] (左)
+    </div>
+
+    <div class="controls" style="margin-top: 20px;">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const M = 4, N = 5;
+    let dp = Array.from({ length: M }, () => Array(N).fill(0));
+    let r = 0, c = 0;
+    let phase = 0; // 0: init edges, 1: fill middle
+
+    function init() {
+        const grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${N}, 50px)`;
+        grid.innerHTML = '';
+        
+        for (let i = 0; i < M; i++) {
+            for (let j = 0; j < N; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${i}-${j}`;
+                cell.textContent = '';
+                grid.appendChild(cell);
+            }
+        }
+
+        dp = Array.from({ length: M }, () => Array(N).fill(0));
+        r = 0; c = 0;
+        phase = 0;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '点击下一步，初始化边界 (第一行和第一列)';
+    }
+
+    function updateView() {
+        document.querySelectorAll('.cell').forEach(cell => cell.classList.remove('active', 'checking'));
+        
+        if (phase === 0) {
+            // Initializing edges
+            const cell = document.getElementById(`cell-${r}-${c}`);
+            cell.classList.add('active', 'boundary', 'done');
+            dp[r][c] = 1;
+            cell.textContent = '1';
+            document.getElementById('status').textContent = `初始化边界格子 (${r}, ${c})，只有 1 种路径。`;
+        } else {
+            // Filling middle
+            const cell = document.getElementById(`cell-${r}-${c}`);
+            cell.classList.add('active');
+            
+            const upCell = document.getElementById(`cell-${r-1}-${c}`);
+            const leftCell = document.getElementById(`cell-${r}-${c-1}`);
+            upCell.classList.add('checking');
+            leftCell.classList.add('checking');
+            
+            dp[r][c] = dp[r-1][c] + dp[r][c-1];
+            cell.textContent = dp[r][c];
+            cell.classList.add('done');
+            document.getElementById('status').textContent = `计算 (${r}, ${c}): 上边(${dp[r-1][c]}) + 左边(${dp[r][c-1]}) = ${dp[r][c]}`;
+        }
+    }
+
+    function next() {
+        if (phase === 0) {
+            updateView();
+            // Move along the first column then the first row
+            if (r < M - 1) {
+                r++;
+            } else if (c < N - 1) {
+                if (c === 0) r = 0; // Start row init
+                c++;
+            } else {
+                // Done with edges
+                phase = 1;
+                r = 1; c = 1;
+                document.getElementById('status').textContent = '边界初始化完成，开始填充中间网格。';
+            }
+        } else {
+            updateView();
+            c++;
+            if (c >= N) {
+                c = 1;
+                r++;
+            }
+            if (r >= M) {
+                document.getElementById('nextBtn').disabled = true;
+                document.getElementById('status').textContent = `遍历结束！总共的不同路径数为: ${dp[M-1][N-1]}`;
+            }
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>

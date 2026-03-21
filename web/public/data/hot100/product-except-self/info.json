@@ -1,0 +1,17 @@
+{
+  "id": 238,
+  "title": "238. 除自身以外数组的乘积",
+  "slug": "product-except-self",
+  "link": "https://leetcode.cn/problems/product-except-self/",
+  "difficulty": "Medium",
+  "description": "给你一个整数数组 nums，返回数组 answer ，其中 answer[i] 等于 nums 中除 nums[i] 之外其余各元素的乘积。请不要使用除法，且在 O(n) 时间复杂度内完成此题。",
+  "solutions": [
+    {
+      "name": "左右两次遍历 (最优)",
+      "file": "linear.py",
+      "time": "O(N)",
+      "space": "O(1)",
+      "is_optimal": true
+    }
+  ]
+}

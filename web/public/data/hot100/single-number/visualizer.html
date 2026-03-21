@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>136. 只出现一次的数字 - 可视化演示</title>
+    <style>
+        :root {
+            --primary-purple: #a855f7;
+            --emerald-green: #10b981;
+            --rose-red: #f43f5e;
+            --amber-yellow: #f59e0b;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-purple);
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .nums-row {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .num-box {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 20px;
+            transition: all 0.3s ease;
+            background: #1c2128;
+        }
+
+        .num-box.active { border: 2px solid var(--amber-yellow); transform: scale(1.1); box-shadow: 0 0 15px var(--amber-yellow); }
+        .num-box.matched { opacity: 0.3; background: #0d1117; text-decoration: line-through; }
+
+        .magic-wand-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .wand-box {
+            width: 80px;
+            height: 80px;
+            border: 3px solid var(--primary-purple);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            font-family: monospace;
+            background: rgba(168, 85, 247, 0.1);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .wand-box.pulse { transform: scale(1.2); background: rgba(168, 85, 247, 0.3); }
+
+        .binary-display {
+            font-family: monospace;
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 5px;
+        }
+
+        .status-text {
+            height: 60px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--amber-yellow);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary-purple);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #30363d; cursor: not-allowed; }
+
+        .xor-icon {
+            font-size: 24px;
+            margin: 0 10px;
+            color: var(--primary-purple);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>136. 只出现一次的数字 (Single Number)</h2>
+    
+    <div class="visualization-area">
+        <div class="nums-row" id="numsRow"></div>
+        
+        <div class="xor-icon">⊕ (XOR)</div>
+
+        <div class="magic-wand-container">
+            <div class="wand-box" id="wandBox">0</div>
+            <div class="binary-display" id="binaryDisplay">0000</div>
+            <div style="font-size: 14px; color: var(--primary-purple);">魔法结果 (ans)</div>
+        </div>
+    </div>
+
+    <div class="status-text" id="status">点击“下一步”开始，初始化魔法棒为 0</div>
+
+    <div class="controls">
+        <button id="resetBtn">重置</button>
+        <button id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+    const nums = [4, 1, 2, 1, 2];
+    let ans = 0;
+    let i = 0;
+
+    function toBinary(n) {
+        return n.toString(2).padStart(4, '0');
+    }
+
+    function init() {
+        const numsRow = document.getElementById('numsRow');
+        numsRow.innerHTML = '';
+        nums.forEach((num, idx) => {
+            const box = document.createElement('div');
+            box.className = 'num-box';
+            box.id = `num-${idx}`;
+            box.textContent = num;
+            numsRow.appendChild(box);
+        });
+
+        ans = 0;
+        i = 0;
+        document.getElementById('wandBox').textContent = '0';
+        document.getElementById('binaryDisplay').textContent = '0000';
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('status').textContent = '准备就绪。初始结果 ans = 0。';
+        document.getElementById('wandBox').classList.remove('pulse');
+    }
+
+    function next() {
+        if (i >= nums.length) return;
+
+        const x = nums[i];
+        const oldAns = ans;
+        ans ^= x;
+
+        // Visual updates
+        document.querySelectorAll('.num-box').forEach(b => b.classList.remove('active'));
+        const currentNumBox = document.getElementById(`num-${i}`);
+        currentNumBox.classList.add('active');
+        
+        const wand = document.getElementById('wandBox');
+        wand.textContent = ans;
+        wand.classList.remove('pulse');
+        void wand.offsetWidth; // trigger reflow
+        wand.classList.add('pulse');
+
+        document.getElementById('binaryDisplay').textContent = toBinary(ans);
+
+        const status = document.getElementById('status');
+        status.innerHTML = `处理数字 <b>${x}</b>: <br>${oldAns} (二进制 ${toBinary(oldAns)}) ^ ${x} (二进制 ${toBinary(x)}) = <b>${ans}</b>`;
+
+        i++;
+        if (i >= nums.length) {
+            document.getElementById('nextBtn').disabled = true;
+            status.innerHTML += `<br>🎉 遍历结束！只出现一次的数字是: <b>${ans}</b>`;
+            // Fade out the boxes a bit to highlight the result
+            document.querySelectorAll('.num-box').forEach(b => b.classList.add('matched'));
+        }
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('resetBtn').addEventListener('click', init);
+
+    init();
+</script>
+
+</body>
+</html>
