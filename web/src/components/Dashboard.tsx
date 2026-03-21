@@ -8,7 +8,7 @@ interface DashboardProps {
   onAction: (action: 'analyze' | 'fix' | 'favorites') => void;
 }
 
-export function Dashboard({ onAction }: DashboardProps) {
+function DashboardComponent({ onAction }: DashboardProps) {
   const cards = [
     {
       id: 'analyze',
@@ -121,3 +121,5 @@ export function Dashboard({ onAction }: DashboardProps) {
     </div>
   );
 }
+
+export default DashboardComponent;

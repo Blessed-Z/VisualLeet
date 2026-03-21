@@ -3,16 +3,16 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
-// 🚀 动态导入：只有在用到时才加载，极大提升首屏速度
+// 🚀 动态导入优化
 const CodeEditor = dynamic(() => import('@/components/CodeEditor').then(mod => mod.CodeEditor), { 
   ssr: false,
   loading: () => <div className="h-full w-full bg-zinc-900/50 animate-pulse flex items-center justify-center text-zinc-700 text-xs">载入编辑器...</div>
 });
 
-const Visualizer = dynamic(() => import('@/components/Visualizer').then(mod => mod.Visualizer), { ssr: false });
-const MarkdownRenderer = dynamic(() => import('@/components/MarkdownRenderer').then(mod => mod.MarkdownRenderer), { ssr: false });
-const ProblemLibrary = dynamic(() => import('@/components/ProblemLibrary').then(mod => mod.ProblemLibrary), { ssr: false });
-const Dashboard = dynamic(() => import('@/components/Dashboard').then(mod => mod.Dashboard), { ssr: false });
+const Visualizer = dynamic(() => import('@/components/Visualizer'), { ssr: false });
+const MarkdownRenderer = dynamic(() => import('@/components/MarkdownRenderer'), { ssr: false });
+const ProblemLibrary = dynamic(() => import('@/components/ProblemLibrary'), { ssr: false });
+const Dashboard = dynamic(() => import('@/components/Dashboard'), { ssr: false });
 
 import { CypherMascot, MascotStatus } from '@/components/CypherMascot';
 import { 
@@ -224,7 +224,7 @@ export default function Home() {
       setMascotStatus('typing');
       
       let lastUpdateTime = 0;
-      const THROTTLE_MS = 150; 
+      const THROTTLE_MS = 200; // 降低更新频率，减少 UI 压力
 
       while (true) {
         const { done, value } = await activeReader.read();

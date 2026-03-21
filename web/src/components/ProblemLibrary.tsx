@@ -17,7 +17,7 @@ interface ProblemLibraryProps {
   selectedSlug?: string;
 }
 
-export const ProblemLibrary = memo(function ProblemLibrary({ onSelect, selectedSlug }: ProblemLibraryProps) {
+const ProblemLibraryComponent = memo(function ProblemLibrary({ onSelect, selectedSlug }: ProblemLibraryProps) {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
@@ -112,4 +112,6 @@ export const ProblemLibrary = memo(function ProblemLibrary({ onSelect, selectedS
       </div>
     </div>
   );
-}
+});
+
+export default ProblemLibraryComponent;

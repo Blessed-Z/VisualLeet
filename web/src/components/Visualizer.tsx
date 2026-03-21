@@ -1,14 +1,9 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { RotateCcw, ExternalLink, Maximize2 } from 'lucide-react';
+import React, { useState, memo } from 'react';
+import { RotateCcw, Maximize2 } from 'lucide-react';
 
-export function Visualizer({ htmlContent }: { htmlContent: string | null }) {
-  const [reloadKey, setReloadKey] = useState(0);
-
-  // 当内容改变时，重置 reloadKey
-  useEffect(() => {
-    setReloadKey(0);
-  }, [htmlContent]);
+const VisualizerComponent = memo(function Visualizer({ htmlContent }: { htmlContent: string | null }) {
+  const [manualReload, setManualReload] = useState(0);
 
   if (!htmlContent) {
     return (
@@ -23,7 +18,7 @@ export function Visualizer({ htmlContent }: { htmlContent: string | null }) {
   }
 
   const handleReset = () => {
-    setReloadKey(prev => prev + 1);
+    setManualReload(prev => prev + 1);
   };
 
   return (
@@ -40,7 +35,7 @@ export function Visualizer({ htmlContent }: { htmlContent: string | null }) {
       </div>
 
       <iframe
-        key={reloadKey}
+        key={`${htmlContent.length}-${manualReload}`}
         srcDoc={htmlContent}
         title="Algorithm Visualization"
         className="w-full h-full border-none"
@@ -48,4 +43,6 @@ export function Visualizer({ htmlContent }: { htmlContent: string | null }) {
       />
     </div>
   );
-}
+});
+
+export default VisualizerComponent;

@@ -8,7 +8,7 @@ interface MarkdownRendererProps {
   variant?: 'note' | 'chat';
 }
 
-export function MarkdownRenderer({ content, variant = 'note' }: MarkdownRendererProps) {
+function MarkdownRendererComponent({ content, variant = 'note' }: MarkdownRendererProps) {
   if (!content) return null;
 
   const isNote = variant === 'note';
@@ -60,3 +60,5 @@ export function MarkdownRenderer({ content, variant = 'note' }: MarkdownRenderer
     </div>
   );
 }
+
+export default MarkdownRendererComponent;
