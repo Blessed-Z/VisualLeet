@@ -1,0 +1,7 @@
+# 告诉 GitHub 忽略数据文件夹中的 HTML 统计
+web/public/data/**/*.html linguist-vendored
+web/public/data/**/*.json linguist-vendored
+web/public/data/**/*.md linguist-vendored
+
+# 如果根目录也有 data 文件夹（虽然目前已忽略，但为了保险）
+data/**/*.html linguist-vendored

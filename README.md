@@ -84,7 +84,13 @@ npm run dev
 
 ## 📈 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Blessed-Z/VisualLeet&type=Date)](https://star-history.com/#Blessed-Z/VisualLeet&Date)
+<a href="https://star-history.com/#Blessed-Z/VisualLeet&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Blessed-Z/VisualLeet&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Blessed-Z/VisualLeet&type=Date" />
+   <img alt="Star History Chart" src="web/public/star-history-2026321.png" />
+ </picture>
+</a>
 
 ---
 
