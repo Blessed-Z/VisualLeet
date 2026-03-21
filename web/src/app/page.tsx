@@ -203,7 +203,10 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task, problemDescription, userCode, language })
       });
+      
       const reader = response.body?.getReader();
+      if (!reader) throw new Error('No reader found');
+
       let accumulatedContent = '';
       setMascotStatus('typing');
       
