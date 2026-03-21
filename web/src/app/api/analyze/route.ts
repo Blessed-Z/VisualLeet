@@ -131,16 +131,21 @@ export async function POST(req: Request) {
     (async () => {
       const reader = cacheStream.getReader();
       let fullContent = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        fullContent += new TextDecoder().decode(value);
-      }
-      if (fullContent) {
-        await saveAnalysisToCache(hash, task, fullContent);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            fullContent += new TextDecoder().decode(value);
+          }
+        }
+        if (fullContent) {
+          await saveAnalysisToCache(hash, task, fullContent);
+        }
+      } finally {
+        reader.releaseLock();
       }
     })();
-
     return new Response(clientStream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
