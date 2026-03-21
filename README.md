@@ -13,13 +13,13 @@
 ### 🏠 沉浸式主界面
 在这里开启你的算法之旅，选择 Hot 100 题目或输入新题。
 <p align="center">
-  <img src="web/public/187557909f0df9a74030b52593b8cdef.png" alt="VisualLeet Main Dashboard" width="850px" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);" />
+  <img src="https://raw.githubusercontent.com/Blessed-Z/VisualLeet/main/web/public/187557909f0df9a74030b52593b8cdef.png" alt="VisualLeet Main Dashboard" width="850px" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);" />
 </p>
 
 ### 🎬 动态算法演示
 点击“下一步”，亲眼见证数据结构的流转，配合通俗易懂的“小朋友版”笔记。
 <p align="center">
-  <img src="web/public/64f19f012ca68cdc137955ab79d86fa9.png" alt="VisualLeet Problem Visualization" width="850px" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);" />
+  <img src="https://raw.githubusercontent.com/Blessed-Z/VisualLeet/main/web/public/64f19f012ca68cdc137955ab79d86fa9.png" alt="VisualLeet Problem Visualization" width="850px" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);" />
 </p>
 
 ---
@@ -29,7 +29,7 @@
 *   🎬 **独家可视化生成**: AI 为每一道题生成专属的动态演示，支持断点式单步调试。
 *   🧒 **小朋友模式解析**: 拒绝冷冰冰的技术术语，用“魔法口袋”、“舞伴匹配”等比喻拆解算法。
 *   🎵 **押韵巧记口诀**: 每道题都配有朗朗上口的儿歌顺口溜，帮你把套路刻在脑子里。
-*   🤖 **AI团子伴读**: 原创 AI 团子全程陪同，通过丰富的表情提供情绪价值。
+*   🤖 **赛芙 (Cypher) 伴读**: 原创 AI 看板娘全程陪同，通过丰富的表情提供情绪价值。
 *   📱 **全平台适配**: 完美支持手机端，随时随地利用碎片时间温习算法。
 
 ---
@@ -88,7 +88,7 @@ npm run dev
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Blessed-Z/VisualLeet&type=Date&theme=dark" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Blessed-Z/VisualLeet&type=Date" />
-   <img alt="Star History Chart" src="web/public/star-history-2026321.png" />
+   <img alt="Star History Chart" src="https://raw.githubusercontent.com/Blessed-Z/VisualLeet/main/web/public/star-history-2026321.png" />
  </picture>
 </a>
 
