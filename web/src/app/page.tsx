@@ -217,7 +217,7 @@ export default function Home() {
       const THROTTLE_MS = 150; 
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await reader!.read();
         if (done) break;
         if (value) {
           accumulatedContent += new TextDecoder().decode(value);
@@ -330,7 +330,7 @@ export default function Home() {
       const THROTTLE_MS = 100; // 限制 100ms 更新一次 UI
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await reader!.read();
         if (done) break;
         if (value) {
           aiResponseContent += new TextDecoder().decode(value);
