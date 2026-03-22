@@ -12,7 +12,8 @@
     {
       "id": "scan-swap",
       "name": "两遍扫描法",
-      "description": "从后往前找第一个相邻升序对 (i, i+1)，在 i 右侧找第一个比 nums[i] 大的数进行交换，最后反转 i 之后的部分。"
+      "description": "从后往前找第一个相邻升序对 (i, i+1)，在 i 右侧找第一个比 nums[i] 大的数进行交换，最后反转 i 之后的 部分。",
+      "file": "python3.py"
     }
   ]
 }

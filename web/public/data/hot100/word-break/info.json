@@ -12,7 +12,8 @@
     {
       "id": "dp",
       "name": "动态规划",
-      "description": "定义 dp[i] 表示字符串的前 i 个字符是否可以被拆分为字典中的单词。"
+      "description": "定义 dp[i] 表示字符串的前 i 个字符是否可以被拆分为字典中的单词。",
+      "file": "python3.py"
     }
   ]
 }

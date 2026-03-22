@@ -12,7 +12,8 @@
     {
       "id": "dp",
       "name": "二维动态规划",
-      "description": "定义 dp[i][j] 为将 word1 的前 i 个字符转换为 word2 的前 j 个字符所需的最小操作数。"
+      "description": "定义 dp[i][j] 为将 word1 的前 i 个字符转换为 word2 的前 j 个字符所需的最小操作数。",
+      "file": "python3.py"
     }
   ]
 }
