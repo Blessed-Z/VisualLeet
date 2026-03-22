@@ -134,9 +134,15 @@ export default function Home() {
       const response = await fetch(`/data/hot100/${slug}/info.json`);
       const info = await response.json();
       setProblemDescription(info.description || '');
-      const solutionsRes = await fetch(`/data/hot100/${slug}/solutions/python3.py`);
+
+      // 动态获取最优解或第一个解
+      const optimalSolution = info.solutions?.find((s: any) => s.is_optimal) || info.solutions?.[0];
+      const solutionFile = optimalSolution?.file || 'python3.py'; // 回退方案
+      
+      const solutionsRes = await fetch(`/data/hot100/${slug}/solutions/${solutionFile}`);
       const code = await solutionsRes.text();
       setUserCode(code);
+
       const fetchTask = async (task: TaskType, path: string) => {
         try {
           const res = await fetch(`/data/hot100/${slug}/${path}`);
